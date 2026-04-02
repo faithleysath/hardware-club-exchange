@@ -20,7 +20,7 @@
 | status | text | `pending`, `active`, `suspended` |
 | display_name | text | 平台展示名 |
 | real_name | text | 可选，便于内部识别 |
-| contact_wechat | text | 默认联系方式 |
+| contact_wechat | text | 默认联系方式，第一版固定为微信 |
 | department | text | 可选 |
 | join_year | int | 可选 |
 | created_at | timestamptz | 创建时间 |
@@ -39,7 +39,7 @@
 | category | text | 如 `board`, `sensor`, `tool`, `device`, `other` |
 | condition | text | 如 `new`, `like_new`, `used`, `for_parts` |
 | price_cents | int | 价格，单位分 |
-| contact_note | text | 覆盖默认联系方式的补充说明 |
+| contact_note | text | 覆盖默认联系方式的补充说明，第一版不单独拆出 QQ / 手机号字段 |
 | campus_area | text | 可选，线下交接地点偏好 |
 | status | text | `draft`, `pending_review`, `published`, `reserved`, `completed`, `rejected`, `removed` |
 | reject_reason | text | 驳回原因 |
@@ -65,6 +65,11 @@
 ### `reservation_requests`
 
 买家预约申请。
+
+默认业务规则：
+
+- 同一条闲置允许同时存在多个 `pending` 预约。
+- 卖家按 `created_at` 顺序处理预约，后续申请人可作为候补。
 
 | Field | Type | Notes |
 | --- | --- | --- |

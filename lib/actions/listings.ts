@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -10,8 +10,14 @@ import {
   initialActionState,
   type ActionState,
 } from "@/lib/actions/shared";
+import { MAX_LISTING_IMAGES, type ListingStatus } from "@/lib/constants";
 import { db } from "@/lib/db/client";
-import { auditLogs, listingImages, listings } from "@/lib/db/schema";
+import {
+  auditLogs,
+  listingImages,
+  listings,
+  reservationRequests,
+} from "@/lib/db/schema";
 import { canSellerTransitionListing } from "@/lib/listing-permissions";
 import {
   deleteListingImages,
@@ -19,6 +25,7 @@ import {
   uploadListingImages,
   validateImageFiles,
 } from "@/lib/media";
+import { resolveRetainedImageIds } from "@/lib/listing-image-retention";
 import {
   adminReviewActionSchema,
   listingFormSchema,
@@ -28,6 +35,9 @@ import {
 type ListingMutationRecord = typeof listings.$inferSelect & {
   images: Array<typeof listingImages.$inferSelect>;
 };
+
+type ListingIntent = "draft" | "submit";
+type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 async function getListingMutationRecord(listingId: string) {
   const [listing] = await db
@@ -64,12 +74,124 @@ function createListingPayload(formData: FormData) {
   });
 }
 
+function getListingIntent(formData: FormData): ListingIntent {
+  return formData.get("intent") === "draft" ? "draft" : "submit";
+}
+
+function getRetainedImageIds(formData: FormData, currentImages: ListingMutationRecord["images"]) {
+  return resolveRetainedImageIds({
+    retainedImageIdsValue: formData.get("retainedImageIds"),
+    currentImageIds: currentImages.map((image) => image.id),
+  });
+}
+
 function revalidateListingPaths(listingId: string) {
   revalidatePath("/");
+  revalidatePath("/publish");
   revalidatePath("/me/listings");
+  revalidatePath("/me/reservations");
+  revalidatePath("/me/favorites");
   revalidatePath(`/items/${listingId}`);
   revalidatePath("/admin/review");
   revalidatePath("/admin/audit");
+  revalidatePath("/admin/reports");
+}
+
+async function syncReservationRequestsForListingStatus(
+  tx: DbTransaction,
+  params: {
+    listingId: string;
+    nextStatus: ListingStatus;
+    actorId: string;
+  },
+) {
+  const now = new Date();
+
+  if (
+    params.nextStatus === "draft" ||
+    params.nextStatus === "pending_review" ||
+    params.nextStatus === "rejected" ||
+    params.nextStatus === "removed"
+  ) {
+    await tx
+      .update(reservationRequests)
+      .set({
+        status: "rejected",
+        handledBy: params.actorId,
+        handledAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(reservationRequests.listingId, params.listingId),
+          eq(reservationRequests.status, "pending"),
+        ),
+      );
+
+    await tx
+      .update(reservationRequests)
+      .set({
+        status: "cancelled",
+        handledBy: params.actorId,
+        handledAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(reservationRequests.listingId, params.listingId),
+          eq(reservationRequests.status, "accepted"),
+        ),
+      );
+  }
+
+  if (params.nextStatus === "published") {
+    await tx
+      .update(reservationRequests)
+      .set({
+        status: "cancelled",
+        handledBy: params.actorId,
+        handledAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(reservationRequests.listingId, params.listingId),
+          eq(reservationRequests.status, "accepted"),
+        ),
+      );
+  }
+
+  if (params.nextStatus === "completed") {
+    await tx
+      .update(reservationRequests)
+      .set({
+        status: "rejected",
+        handledBy: params.actorId,
+        handledAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(reservationRequests.listingId, params.listingId),
+          eq(reservationRequests.status, "pending"),
+        ),
+      );
+
+    await tx
+      .update(reservationRequests)
+      .set({
+        status: "closed",
+        handledBy: params.actorId,
+        handledAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(reservationRequests.listingId, params.listingId),
+          eq(reservationRequests.status, "accepted"),
+        ),
+      );
+  }
 }
 
 export async function createListingAction(
@@ -79,6 +201,7 @@ export async function createListingAction(
   void _previousState;
 
   const viewer = await requireActiveViewer();
+  const intent = getListingIntent(formData);
   const parsed = createListingPayload(formData);
 
   if (!parsed.success) {
@@ -113,7 +236,11 @@ export async function createListingAction(
     };
   }
 
-  if (!viewer.contactWechat && !parsed.data.contactNote) {
+  if (
+    intent !== "draft" &&
+    !viewer.contactWechat &&
+    !parsed.data.contactNote
+  ) {
     return {
       status: "error",
       message: "请填写本条联系方式，或先在个人资料里补充微信号。",
@@ -144,7 +271,7 @@ export async function createListingAction(
         priceCents: parsed.data.priceYuan,
         campusArea: parsed.data.campusArea,
         contactNote: parsed.data.contactNote,
-        status: "pending_review",
+        status: intent === "draft" ? "draft" : "pending_review",
         coverImagePath: uploadedPaths[0]!,
       });
 
@@ -159,7 +286,7 @@ export async function createListingAction(
 
       await tx.insert(auditLogs).values({
         actorId: viewer.id,
-        action: "listing.submitted",
+        action: intent === "draft" ? "listing.drafted" : "listing.submitted",
         targetType: "listing",
         targetId: listingId,
         metadata: {
@@ -181,7 +308,7 @@ export async function createListingAction(
   }
 
   revalidateListingPaths(listingId);
-  redirect("/me/listings?created=1");
+  redirect(intent === "draft" ? "/me/listings?draft=1" : "/me/listings?created=1");
 }
 
 export async function updateListingAction(
@@ -193,6 +320,7 @@ export async function updateListingAction(
 
   const viewer = await requireActiveViewer();
   const current = await getListingMutationRecord(listingId);
+  const intent = getListingIntent(formData);
 
   if (!current || (viewer.role !== "admin" && current.sellerId !== viewer.id)) {
     return {
@@ -220,7 +348,11 @@ export async function updateListingAction(
     };
   }
 
-  if (!viewer.contactWechat && !parsed.data.contactNote) {
+  if (
+    intent !== "draft" &&
+    !viewer.contactWechat &&
+    !parsed.data.contactNote
+  ) {
     return {
       status: "error",
       message: "请补一条联系方式，避免审核通过后成员无法联系你。",
@@ -231,7 +363,7 @@ export async function updateListingAction(
   }
 
   const newImageFiles = extractImageFiles(formData);
-  const hasNewImages = newImageFiles.length > 0;
+  const retainedImageIds = getRetainedImageIds(formData, current.images);
 
   try {
     validateImageFiles(newImageFiles);
@@ -245,10 +377,14 @@ export async function updateListingAction(
     };
   }
 
+  const retainedImages = retainedImageIds
+    .map((imageId) => current.images.find((image) => image.id === imageId) ?? null)
+    .filter((image): image is NonNullable<typeof image> => Boolean(image));
+
   let uploadedPaths: string[] = [];
 
   try {
-    if (hasNewImages) {
+    if (newImageFiles.length > 0) {
       uploadedPaths = await uploadListingImages({
         files: newImageFiles,
         listingId,
@@ -256,7 +392,43 @@ export async function updateListingAction(
       });
     }
 
-    const nextStatus = viewer.role === "admin" ? current.status : "pending_review";
+    const nextImageRecords = [
+      ...retainedImages.map((image) => ({
+        storagePath: image.storagePath,
+        altText: image.altText ?? parsed.data.title,
+      })),
+      ...uploadedPaths.map((storagePath) => ({
+        storagePath,
+        altText: parsed.data.title,
+      })),
+    ];
+
+    if (nextImageRecords.length === 0) {
+      return {
+        status: "error",
+        message: "至少保留 1 张图片，成员才知道你在卖什么。",
+        fieldErrors: {
+          images: "至少保留 1 张图片",
+        },
+      };
+    }
+
+    if (nextImageRecords.length > MAX_LISTING_IMAGES) {
+      return {
+        status: "error",
+        message: "图片数量超过上限，请减少后再试。",
+        fieldErrors: {
+          images: `最多保留 ${MAX_LISTING_IMAGES} 张图片`,
+        },
+      };
+    }
+
+    const nextStatus =
+      viewer.role === "admin"
+        ? current.status
+        : intent === "draft"
+          ? "draft"
+          : "pending_review";
     const nextPublishedAt =
       nextStatus === "published" ? current.publishedAt ?? new Date() : null;
     const nextCompletedAt = null;
@@ -274,24 +446,28 @@ export async function updateListingAction(
           contactNote: parsed.data.contactNote,
           status: nextStatus,
           rejectReason: null,
-          coverImagePath: uploadedPaths[0] ?? current.coverImagePath,
+          coverImagePath: nextImageRecords[0]!.storagePath,
           publishedAt: nextPublishedAt,
           completedAt: nextCompletedAt,
           updatedAt: new Date(),
         })
         .where(eq(listings.id, listingId));
 
-      if (hasNewImages) {
-        await tx.delete(listingImages).where(eq(listingImages.listingId, listingId));
-        await tx.insert(listingImages).values(
-          uploadedPaths.map((storagePath, index) => ({
-            listingId,
-            storagePath,
-            sortOrder: index,
-            altText: parsed.data.title,
-          })),
-        );
-      }
+      await tx.delete(listingImages).where(eq(listingImages.listingId, listingId));
+      await tx.insert(listingImages).values(
+        nextImageRecords.map((image, index) => ({
+          listingId,
+          storagePath: image.storagePath,
+          sortOrder: index,
+          altText: image.altText,
+        })),
+      );
+
+      await syncReservationRequestsForListingStatus(tx, {
+        listingId,
+        nextStatus,
+        actorId: viewer.id,
+      });
 
       await tx.insert(auditLogs).values({
         actorId: viewer.id,
@@ -300,14 +476,17 @@ export async function updateListingAction(
         targetId: listingId,
         metadata: {
           status: nextStatus,
-          replacedImages: hasNewImages,
+          keptImages: retainedImages.length,
+          addedImages: uploadedPaths.length,
         },
       });
     });
 
-    if (hasNewImages) {
-      await deleteListingImages(current.images.map((image) => image.storagePath));
-    }
+    const removedPaths = current.images
+      .filter((image) => !retainedImageIds.includes(image.id))
+      .map((image) => image.storagePath);
+
+    await deleteListingImages(removedPaths);
   } catch (error) {
     await deleteListingImages(uploadedPaths);
 
@@ -322,7 +501,9 @@ export async function updateListingAction(
   }
 
   revalidateListingPaths(listingId);
-  redirect("/me/listings?updated=1");
+  redirect(
+    intent === "draft" ? "/me/listings?draft=1" : "/me/listings?updated=1",
+  );
 }
 
 export async function updateListingStatusAction(formData: FormData) {
@@ -352,7 +533,10 @@ export async function updateListingStatusAction(formData: FormData) {
   const nextPublishedAt =
     parsed.data.nextStatus === "published"
       ? current.publishedAt ?? new Date()
-      : current.publishedAt;
+      : parsed.data.nextStatus === "pending_review" ||
+          parsed.data.nextStatus === "removed"
+        ? null
+        : current.publishedAt;
   const nextCompletedAt =
     parsed.data.nextStatus === "completed" ? new Date() : null;
 
@@ -367,6 +551,12 @@ export async function updateListingStatusAction(formData: FormData) {
         updatedAt: new Date(),
       })
       .where(eq(listings.id, parsed.data.listingId));
+
+    await syncReservationRequestsForListingStatus(tx, {
+      listingId: parsed.data.listingId,
+      nextStatus: parsed.data.nextStatus,
+      actorId: viewer.id,
+    });
 
     await tx.insert(auditLogs).values({
       actorId: viewer.id,
@@ -426,13 +616,22 @@ export async function reviewListingAction(formData: FormData) {
       .update(listings)
       .set({
         status: nextStatus,
-        rejectReason: parsed.data.decision === "approve" ? null : parsed.data.reason ?? null,
+        rejectReason:
+          parsed.data.decision === "approve" ? null : parsed.data.reason ?? null,
         publishedAt:
-          parsed.data.decision === "approve" ? current.publishedAt ?? new Date() : current.publishedAt,
+          parsed.data.decision === "approve"
+            ? current.publishedAt ?? new Date()
+            : null,
         completedAt: null,
         updatedAt: new Date(),
       })
       .where(eq(listings.id, parsed.data.listingId));
+
+    await syncReservationRequestsForListingStatus(tx, {
+      listingId: parsed.data.listingId,
+      nextStatus,
+      actorId: viewer.id,
+    });
 
     await tx.insert(auditLogs).values({
       actorId: viewer.id,

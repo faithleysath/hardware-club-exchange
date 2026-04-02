@@ -5,6 +5,7 @@ import {
   listingConditionValues,
   memberRoleValues,
   memberStatusValues,
+  reportStatusValues,
 } from "@/lib/constants";
 import { parsePriceToCents } from "@/lib/utils";
 
@@ -140,7 +141,13 @@ export const adminPasswordResetSchema = z.object({
 
 export const listingStatusActionSchema = z.object({
   listingId: z.string().uuid(),
-  nextStatus: z.enum(["published", "reserved", "completed", "removed"]),
+  nextStatus: z.enum([
+    "pending_review",
+    "published",
+    "reserved",
+    "completed",
+    "removed",
+  ]),
 });
 
 export const adminReviewActionSchema = z.object({
@@ -149,8 +156,72 @@ export const adminReviewActionSchema = z.object({
   reason: optionalTrimmedText(200),
 });
 
+export const reservationRequestSchema = z.object({
+  listingId: z.string().uuid(),
+  message: optionalTrimmedText(280),
+});
+
+export const reservationActionSchema = z.object({
+  requestId: z.string().uuid(),
+  action: z.enum(["accept", "reject", "cancel", "close"]),
+});
+
+export const favoriteToggleSchema = z.object({
+  listingId: z.string().uuid(),
+});
+
+export const reportCreateSchema = z.object({
+  listingId: z.string().uuid(),
+  reason: z
+    .string()
+    .trim()
+    .min(8, "举报原因至少需要 8 个字")
+    .max(300, "举报原因请控制在 300 个字内"),
+});
+
+export const reportReviewSchema = z.object({
+  reportId: z.string().uuid(),
+  nextStatus: z.enum(reportStatusValues).refine(
+    (value) => value === "resolved" || value === "dismissed",
+    "举报处理结果不合法",
+  ),
+  resolutionNote: optionalTrimmedText(300),
+});
+
+export const categorySettingSchema = z.object({
+  category: z.enum(listingCategoryValues),
+  label: z
+    .string()
+    .trim()
+    .min(1, "分类名称不能为空")
+    .max(20, "分类名称请控制在 20 个字内"),
+  description: optionalTrimmedText(120),
+  submissionHint: optionalTrimmedText(200),
+  sortOrder: z.preprocess(
+    (value) => {
+      if (typeof value !== "string") {
+        return value;
+      }
+
+      const trimmed = value.trim();
+      return trimmed ? Number(trimmed) : 0;
+    },
+    z
+      .number()
+      .int("排序必须是整数")
+      .min(0, "排序不能小于 0")
+      .max(99, "排序请控制在 99 以内"),
+  ),
+  isActive: z.preprocess(
+    (value) => value === "true" || value === true,
+    z.boolean(),
+  ),
+});
+
 export type ListingFormValues = z.infer<typeof listingFormSchema>;
 export type ProfileFormValues = z.infer<typeof profileFormSchema>;
 export type PasswordLoginValues = z.infer<typeof passwordLoginSchema>;
 export type ManagedMemberAccountValues = z.infer<typeof managedMemberAccountSchema>;
 export type AdminPasswordResetValues = z.infer<typeof adminPasswordResetSchema>;
+export type ReservationRequestValues = z.infer<typeof reservationRequestSchema>;
+export type CategorySettingValues = z.infer<typeof categorySettingSchema>;

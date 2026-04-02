@@ -18,10 +18,13 @@ import {
   parseMarketplaceFilters,
 } from "@/lib/data/listings";
 import {
-  listingCategoryOptions,
   listingConditionOptions,
   memberRoleLabels,
 } from "@/lib/constants";
+import {
+  getActiveCategorySettings,
+  getCategoryLabelMap,
+} from "@/lib/data/categories";
 
 type HomePageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -29,7 +32,12 @@ type HomePageProps = {
 
 export default async function Home({ searchParams }: HomePageProps) {
   const filters = await parseMarketplaceFilters(searchParams);
-  const { viewer, listings, stats } = await getHomePageData(filters);
+  const [homePageData, activeCategories, categoryLabelMap] = await Promise.all([
+    getHomePageData(filters),
+    getActiveCategorySettings(),
+    getCategoryLabelMap(),
+  ]);
+  const { viewer, listings, stats } = homePageData;
 
   if (viewer && viewer.status !== "active") {
     redirect("/waiting-approval");
@@ -86,8 +94,8 @@ export default async function Home({ searchParams }: HomePageProps) {
               </label>
               <Select id="category" name="category" defaultValue={filters.category ?? ""}>
                 <option value="">全部分类</option>
-                {listingCategoryOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
+                {activeCategories.map((option) => (
+                  <option key={option.category} value={option.category}>
                     {option.label}
                   </option>
                 ))}
@@ -175,7 +183,13 @@ export default async function Home({ searchParams }: HomePageProps) {
           {listings.length > 0 ? (
             <div className="grid gap-6 xl:grid-cols-2">
               {listings.map((listing) => (
-                <ListingCard key={listing.id} listing={listing} />
+                <ListingCard
+                  key={listing.id}
+                  listing={{
+                    ...listing,
+                    categoryLabel: categoryLabelMap[listing.category],
+                  }}
+                />
               ))}
             </div>
           ) : (

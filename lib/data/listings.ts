@@ -20,7 +20,14 @@ import {
 } from "@/lib/constants";
 import { db } from "@/lib/db/client";
 import { authUsers } from "@/lib/db/auth-schema";
-import { listingImages, listings, profiles } from "@/lib/db/schema";
+import {
+  favorites,
+  listingImages,
+  listings,
+  profiles,
+  reports,
+  reservationRequests,
+} from "@/lib/db/schema";
 import { canViewerEditListing, canViewerSeeListing } from "@/lib/listing-permissions";
 import { getSignedImageUrlMap } from "@/lib/media";
 
@@ -137,7 +144,7 @@ export async function getMarketplaceStats(viewer: Viewer | null) {
           .where(
             and(
               eq(listings.sellerId, viewer.id),
-              inArray(listings.status, ["pending_review", "rejected"]),
+              inArray(listings.status, ["draft", "pending_review", "rejected"]),
             ),
           )
       : Promise.resolve([{ total: 0 }]),
@@ -176,6 +183,74 @@ export async function getListingByIdForViewer(listingId: string, viewer: Viewer)
     imageRows.map((image) => image.storagePath),
   );
 
+  const [favoriteRow, myReservationRow, myOpenReportRow, incomingReservationCountRow] =
+    await Promise.all([
+      row.listing.sellerId === viewer.id
+        ? Promise.resolve(null)
+        : db
+            .select({
+              listingId: favorites.listingId,
+            })
+            .from(favorites)
+            .where(
+              and(
+                eq(favorites.userId, viewer.id),
+                eq(favorites.listingId, listingId),
+              ),
+            )
+            .limit(1)
+            .then((result) => result[0] ?? null),
+      row.listing.sellerId === viewer.id
+        ? Promise.resolve(null)
+        : db
+            .select({
+              id: reservationRequests.id,
+              status: reservationRequests.status,
+              message: reservationRequests.message,
+              createdAt: reservationRequests.createdAt,
+            })
+            .from(reservationRequests)
+            .where(
+              and(
+                eq(reservationRequests.listingId, listingId),
+                eq(reservationRequests.buyerId, viewer.id),
+                inArray(reservationRequests.status, ["pending", "accepted"]),
+              ),
+            )
+            .orderBy(desc(reservationRequests.createdAt))
+            .limit(1)
+            .then((result) => result[0] ?? null),
+      row.listing.sellerId === viewer.id
+        ? Promise.resolve(null)
+        : db
+            .select({
+              id: reports.id,
+            })
+            .from(reports)
+            .where(
+              and(
+                eq(reports.listingId, listingId),
+                eq(reports.reporterId, viewer.id),
+                eq(reports.status, "open"),
+              ),
+            )
+            .limit(1)
+            .then((result) => result[0] ?? null),
+      row.listing.sellerId !== viewer.id
+        ? Promise.resolve([{ total: 0 }])
+        : db
+            .select({
+              total: sql<number>`count(*)::int`,
+            })
+            .from(reservationRequests)
+            .where(
+              and(
+                eq(reservationRequests.listingId, listingId),
+                inArray(reservationRequests.status, ["pending", "accepted"]),
+              ),
+            ),
+    ]);
+
   return {
     ...row,
     images: imageRows.map((image) => ({
@@ -183,6 +258,12 @@ export async function getListingByIdForViewer(listingId: string, viewer: Viewer)
       url: imageMap[image.storagePath] ?? null,
     })),
     canEdit: canViewerEditListing(viewer, row.listing),
+    viewerState: {
+      isFavorited: Boolean(favoriteRow),
+      reservation: myReservationRow,
+      hasOpenReport: Boolean(myOpenReportRow),
+      incomingReservationCount: Number(incomingReservationCountRow[0]?.total ?? 0),
+    },
   };
 }
 

@@ -3,7 +3,7 @@ import Image from "next/image";
 import { reviewListingAction } from "@/lib/actions/listings";
 import { ListingStatusBadge } from "@/components/status-badge";
 import { SubmitButton } from "@/components/submit-button";
-import { listingCategoryLabels, listingConditionLabels } from "@/lib/constants";
+import { listingConditionLabels } from "@/lib/constants";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 
 type AdminReviewCardProps = {
@@ -12,7 +12,7 @@ type AdminReviewCardProps = {
       id: string;
       title: string;
       description: string;
-      category: keyof typeof listingCategoryLabels;
+      categoryLabel: string;
       condition: keyof typeof listingConditionLabels;
       priceCents: number;
       status: Parameters<typeof ListingStatusBadge>[0]["status"];
@@ -55,7 +55,7 @@ export function AdminReviewCard({ item }: AdminReviewCardProps) {
             <div className="space-y-2">
               <div className="flex flex-wrap gap-2 text-sm text-zinc-500">
                 <span className="rounded-full bg-zinc-100 px-3 py-1">
-                  {listingCategoryLabels[item.listing.category]}
+                  {item.listing.categoryLabel}
                 </span>
                 <span className="rounded-full bg-zinc-100 px-3 py-1">
                   {listingConditionLabels[item.listing.condition]}

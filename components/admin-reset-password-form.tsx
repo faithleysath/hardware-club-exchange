@@ -1,13 +1,22 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, type Resolver } from "react-hook-form";
 
 import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
-import { initialActionState } from "@/lib/actions/shared";
 import type { resetMemberPasswordAction } from "@/lib/actions/admin";
+import {
+  getErrorMessage,
+  useServerActionForm,
+} from "@/lib/client-action-form";
+import { adminPasswordResetSchema } from "@/lib/validators";
 
 type ResetMemberPasswordAction = typeof resetMemberPasswordAction;
+type ResetMemberPasswordValues = {
+  memberId: string;
+  password: string;
+};
 
 export function AdminResetPasswordForm({
   memberId,
@@ -18,15 +27,29 @@ export function AdminResetPasswordForm({
   email: string | null;
   action: ResetMemberPasswordAction;
 }) {
-  const [state, formAction] = useActionState(action, initialActionState);
-  const formRef = useRef<HTMLFormElement>(null);
   const canResetPassword = Boolean(email);
 
-  useEffect(() => {
-    if (state.status === "success") {
-      formRef.current?.reset();
-    }
-  }, [state.status]);
+  const form = useForm<ResetMemberPasswordValues>({
+    resolver:
+      zodResolver(adminPasswordResetSchema) as unknown as Resolver<ResetMemberPasswordValues>,
+    defaultValues: {
+      memberId,
+      password: "",
+    },
+    mode: "onBlur",
+  });
+  const { formRef, state, isPending, onSubmit } = useServerActionForm(
+    form,
+    action,
+    {
+      onSuccess(currentForm) {
+        currentForm.reset({
+          memberId,
+          password: "",
+        });
+      },
+    },
+  );
 
   if (!canResetPassword) {
     return (
@@ -37,8 +60,8 @@ export function AdminResetPasswordForm({
   }
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-4">
-      <input type="hidden" name="memberId" value={memberId} />
+    <form ref={formRef} onSubmit={onSubmit} className="space-y-4" noValidate>
+      <input type="hidden" {...form.register("memberId")} />
 
       <div className="space-y-1">
         <p className="text-sm font-medium text-zinc-800">管理员重置密码</p>
@@ -50,15 +73,17 @@ export function AdminResetPasswordForm({
       <label className="block space-y-2">
         <span className="text-sm font-medium text-zinc-800">新密码</span>
         <Input
-          name="password"
+          {...form.register("password")}
           type="password"
           autoComplete="new-password"
           placeholder="至少 8 位"
         />
       </label>
 
-      {state.fieldErrors.password ? (
-        <p className="text-xs text-red-600">{state.fieldErrors.password}</p>
+      {form.formState.errors.password ? (
+        <p className="text-xs text-red-600">
+          {getErrorMessage(form.formState.errors.password.message)}
+        </p>
       ) : null}
 
       {state.message ? (
@@ -73,7 +98,12 @@ export function AdminResetPasswordForm({
         </p>
       ) : null}
 
-      <SubmitButton pendingLabel="重置中..." variant="secondary" size="sm">
+      <SubmitButton
+        pending={isPending}
+        pendingLabel="重置中..."
+        variant="secondary"
+        size="sm"
+      >
         重置密码
       </SubmitButton>
     </form>

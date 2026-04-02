@@ -1,14 +1,30 @@
 "use client";
 
-import { useActionState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  useForm,
+  type Resolver,
+  type UseFormRegisterReturn,
+} from "react-hook-form";
 
 import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
-import { initialActionState } from "@/lib/actions/shared";
 import type { Viewer } from "@/lib/auth";
 import type { updateProfileAction } from "@/lib/actions/auth";
+import {
+  getErrorMessage,
+  useServerActionForm,
+} from "@/lib/client-action-form";
+import { profileFormSchema } from "@/lib/validators";
 
 type ProfileAction = typeof updateProfileAction;
+type ProfileFormValues = {
+  displayName: string;
+  realName: string;
+  contactWechat: string;
+  department: string;
+  joinYear: string;
+};
 
 export function ProfileForm({
   viewer,
@@ -17,43 +33,65 @@ export function ProfileForm({
   viewer: Viewer;
   action: ProfileAction;
 }) {
-  const [state, formAction] = useActionState(action, initialActionState);
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileFormSchema) as unknown as Resolver<ProfileFormValues>,
+    defaultValues: {
+      displayName: viewer.displayName,
+      realName: viewer.realName ?? "",
+      contactWechat: viewer.contactWechat ?? "",
+      department: viewer.department ?? "",
+      joinYear: viewer.joinYear?.toString() ?? "",
+    },
+    mode: "onBlur",
+  });
+  const { formRef, state, isPending, onSubmit } = useServerActionForm(
+    form,
+    action,
+    {
+      onSuccess(currentForm) {
+        const values = currentForm.getValues();
+
+        currentForm.reset({
+          displayName: values.displayName.trim(),
+          realName: values.realName.trim(),
+          contactWechat: values.contactWechat.trim(),
+          department: values.department.trim(),
+          joinYear: values.joinYear.trim(),
+        });
+      },
+    },
+  );
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form ref={formRef} onSubmit={onSubmit} className="space-y-6" noValidate>
       <div className="grid gap-5 md:grid-cols-2">
         <Field
           label="展示名"
-          name="displayName"
-          defaultValue={viewer.displayName}
-          error={state.fieldErrors.displayName}
+          registration={form.register("displayName")}
+          error={getErrorMessage(form.formState.errors.displayName?.message)}
           description="会展示在闲置列表和审核台里。"
         />
         <Field
           label="真实姓名"
-          name="realName"
-          defaultValue={viewer.realName ?? ""}
-          error={state.fieldErrors.realName}
+          registration={form.register("realName")}
+          error={getErrorMessage(form.formState.errors.realName?.message)}
           description="仅社团内部使用，便于管理员识别。"
         />
         <Field
           label="微信号"
-          name="contactWechat"
-          defaultValue={viewer.contactWechat ?? ""}
-          error={state.fieldErrors.contactWechat}
+          registration={form.register("contactWechat")}
+          error={getErrorMessage(form.formState.errors.contactWechat?.message)}
           description="作为默认联系方式使用。"
         />
         <Field
           label="部门 / 小组"
-          name="department"
-          defaultValue={viewer.department ?? ""}
-          error={state.fieldErrors.department}
+          registration={form.register("department")}
+          error={getErrorMessage(form.formState.errors.department?.message)}
         />
         <Field
           label="入社年份"
-          name="joinYear"
-          defaultValue={viewer.joinYear?.toString() ?? ""}
-          error={state.fieldErrors.joinYear}
+          registration={form.register("joinYear")}
+          error={getErrorMessage(form.formState.errors.joinYear?.message)}
           inputMode="numeric"
           placeholder="例如 2024"
         />
@@ -71,27 +109,29 @@ export function ProfileForm({
         </p>
       ) : null}
 
-      <SubmitButton pendingLabel="保存中...">保存资料</SubmitButton>
+      <SubmitButton pending={isPending} pendingLabel="保存中...">
+        保存资料
+      </SubmitButton>
     </form>
   );
 }
 
 function Field({
   label,
-  name,
+  registration,
   description,
   error,
   ...props
 }: React.InputHTMLAttributes<HTMLInputElement> & {
   label: string;
-  name: string;
+  registration: UseFormRegisterReturn;
   description?: string;
   error?: string;
 }) {
   return (
     <label className="space-y-2">
       <span className="text-sm font-medium text-zinc-800">{label}</span>
-      <Input name={name} {...props} />
+      <Input {...registration} {...props} />
       {description ? <span className="text-xs text-zinc-500">{description}</span> : null}
       {error ? <span className="text-xs text-red-600">{error}</span> : null}
     </label>

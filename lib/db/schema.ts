@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -37,6 +38,30 @@ export const reservationStatusEnum = pgEnum(
   reservationStatusValues,
 );
 export const reportStatusEnum = pgEnum("report_status", reportStatusValues);
+
+export const listingCategorySettings = pgTable(
+  "listing_category_settings",
+  {
+    category: listingCategoryEnum("category").primaryKey(),
+    label: text("label").notNull(),
+    description: text("description"),
+    submissionHint: text("submission_hint"),
+    sortOrder: integer("sort_order").default(0).notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("listing_category_settings_sort_idx").on(
+      table.sortOrder,
+      table.isActive,
+    ),
+  ],
+);
 
 export const profiles = pgTable("profiles", {
   id: uuid("id").primaryKey(),
@@ -205,3 +230,4 @@ export type Profile = typeof profiles.$inferSelect;
 export type Listing = typeof listings.$inferSelect;
 export type ListingImage = typeof listingImages.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
+export type ListingCategorySetting = typeof listingCategorySettings.$inferSelect;

@@ -1,6 +1,7 @@
 import { AdminReviewCard } from "@/components/admin-review-card";
 import { requireAdminViewer } from "@/lib/auth";
 import { getPendingReviewListings } from "@/lib/data/admin";
+import { getCategoryLabelMap } from "@/lib/data/categories";
 
 export const metadata = {
   title: "审核台",
@@ -8,7 +9,10 @@ export const metadata = {
 
 export default async function AdminReviewPage() {
   await requireAdminViewer();
-  const items = await getPendingReviewListings();
+  const [items, categoryLabelMap] = await Promise.all([
+    getPendingReviewListings(),
+    getCategoryLabelMap(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -22,7 +26,16 @@ export default async function AdminReviewPage() {
       {items.length > 0 ? (
         <div className="grid gap-6">
           {items.map((item) => (
-            <AdminReviewCard key={item.listing.id} item={item} />
+            <AdminReviewCard
+              key={item.listing.id}
+              item={{
+                ...item,
+                listing: {
+                  ...item.listing,
+                  categoryLabel: categoryLabelMap[item.listing.category],
+                },
+              }}
+            />
           ))}
         </div>
       ) : (

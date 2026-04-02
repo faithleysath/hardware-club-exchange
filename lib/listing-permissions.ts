@@ -18,14 +18,17 @@ const publicListingStatuses = new Set<ListingStatus>([
 ]);
 
 export type SellerActionStatus =
+  | "pending_review"
   | "published"
   | "reserved"
   | "completed"
   | "removed";
 
 const sellerTransitionMap: Partial<Record<ListingStatus, SellerActionStatus[]>> = {
-  published: ["reserved", "completed", "removed"],
-  reserved: ["published", "completed", "removed"],
+  draft: ["pending_review", "removed"],
+  rejected: ["pending_review", "removed"],
+  published: ["removed"],
+  reserved: ["removed"],
 };
 
 export function isPublicListingStatus(status: ListingStatus) {

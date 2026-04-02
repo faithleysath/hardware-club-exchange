@@ -1,61 +1,93 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  useForm,
+  type Resolver,
+  type UseFormRegisterReturn,
+} from "react-hook-form";
 
 import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { initialActionState } from "@/lib/actions/shared";
 import type { createManagedMemberAccountAction } from "@/lib/actions/admin";
+import {
+  getErrorMessage,
+  useServerActionForm,
+} from "@/lib/client-action-form";
+import { managedMemberAccountSchema } from "@/lib/validators";
 
 type CreateManagedMemberAccountAction = typeof createManagedMemberAccountAction;
+type CreateManagedMemberAccountValues = {
+  email: string;
+  displayName: string;
+  password: string;
+  initialStatus: "pending" | "active";
+};
 
 export function AdminCreateMemberForm({
   action,
 }: {
   action: CreateManagedMemberAccountAction;
 }) {
-  const [state, formAction] = useActionState(action, initialActionState);
-  const formRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    if (state.status === "success") {
-      formRef.current?.reset();
-    }
-  }, [state.status]);
+  const form = useForm<CreateManagedMemberAccountValues>({
+    resolver:
+      zodResolver(managedMemberAccountSchema) as unknown as Resolver<CreateManagedMemberAccountValues>,
+    defaultValues: {
+      email: "",
+      displayName: "",
+      password: "",
+      initialStatus: "pending",
+    },
+    mode: "onBlur",
+  });
+  const { formRef, state, isPending, onSubmit } = useServerActionForm(
+    form,
+    action,
+    {
+      onSuccess(currentForm) {
+        currentForm.reset({
+          email: "",
+          displayName: "",
+          password: "",
+          initialStatus: "pending",
+        });
+      },
+    },
+  );
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-5">
+    <form ref={formRef} onSubmit={onSubmit} className="space-y-5" noValidate>
       <div className="grid gap-5 md:grid-cols-2">
         <Field
           label="邮箱"
-          name="email"
+          registration={form.register("email")}
           type="email"
           autoComplete="email"
           placeholder="member@example.com"
-          error={state.fieldErrors.email}
+          error={getErrorMessage(form.formState.errors.email?.message)}
           description="这个邮箱以后可以直接用来登录，不开放自助注册。"
         />
         <Field
           label="展示名"
-          name="displayName"
+          registration={form.register("displayName")}
           placeholder="可留空，默认取邮箱前缀"
-          error={state.fieldErrors.displayName}
+          error={getErrorMessage(form.formState.errors.displayName?.message)}
           description="显示在成员目录、发布页和审核台里。"
         />
         <Field
           label="临时密码"
-          name="password"
+          registration={form.register("password")}
           type="password"
           autoComplete="new-password"
           placeholder="至少 8 位"
-          error={state.fieldErrors.password}
+          error={getErrorMessage(form.formState.errors.password?.message)}
           description="由管理员线下发给对方，当前版本暂不开放自助注册。"
         />
         <SelectField
           label="初始状态"
-          name="initialStatus"
-          error={state.fieldErrors.initialStatus}
+          registration={form.register("initialStatus")}
+          error={getErrorMessage(form.formState.errors.initialStatus?.message)}
           description="设为已激活后，对方第一次登录就能直接使用平台。"
         >
           <option value="pending">待审核</option>
@@ -75,27 +107,29 @@ export function AdminCreateMemberForm({
         </p>
       ) : null}
 
-      <SubmitButton pendingLabel="创建中...">创建邮箱账号</SubmitButton>
+      <SubmitButton pending={isPending} pendingLabel="创建中...">
+        创建邮箱账号
+      </SubmitButton>
     </form>
   );
 }
 
 function Field({
   label,
-  name,
+  registration,
   description,
   error,
   ...props
 }: React.InputHTMLAttributes<HTMLInputElement> & {
   label: string;
-  name: string;
+  registration: UseFormRegisterReturn;
   description?: string;
   error?: string;
 }) {
   return (
     <label className="space-y-2">
       <span className="text-sm font-medium text-zinc-800">{label}</span>
-      <Input name={name} {...props} />
+      <Input {...registration} {...props} />
       {description ? <span className="text-xs text-zinc-500">{description}</span> : null}
       {error ? <span className="text-xs text-red-600">{error}</span> : null}
     </label>
@@ -104,20 +138,20 @@ function Field({
 
 function SelectField({
   label,
-  name,
+  registration,
   description,
   error,
   children,
 }: React.SelectHTMLAttributes<HTMLSelectElement> & {
   label: string;
-  name: string;
+  registration: UseFormRegisterReturn;
   description?: string;
   error?: string;
 }) {
   return (
     <label className="space-y-2">
       <span className="text-sm font-medium text-zinc-800">{label}</span>
-      <Select name={name} defaultValue="pending">
+      <Select {...registration}>
         {children}
       </Select>
       {description ? <span className="text-xs text-zinc-500">{description}</span> : null}

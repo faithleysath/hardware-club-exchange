@@ -1,13 +1,21 @@
-import { CheckCircle2, PauseCircle, RotateCcw, Trash2 } from "lucide-react";
+import {
+  CheckCircle2,
+  PauseCircle,
+  RotateCcw,
+  Send,
+  Trash2,
+} from "lucide-react";
 
 import { updateListingStatusAction } from "@/lib/actions/listings";
-import {
-  getSellerStatusActions,
-  type SellerActionStatus,
-} from "@/lib/listing-permissions";
+import { getSellerStatusActions } from "@/lib/listing-permissions";
 import { SubmitButton } from "@/components/submit-button";
+import type { ListingStatus } from "@/lib/constants";
 
 const actionLabelMap = {
+  pending_review: {
+    label: "提交审核",
+    icon: Send,
+  },
   published: {
     label: "恢复上架",
     icon: RotateCcw,
@@ -31,7 +39,7 @@ export function ListingStatusActions({
   status,
 }: {
   listingId: string;
-  status: SellerActionStatus | "draft" | "pending_review" | "rejected";
+  status: ListingStatus;
 }) {
   const actions = getSellerStatusActions(status);
 
@@ -40,9 +48,7 @@ export function ListingStatusActions({
       <p className="text-sm text-zinc-500">
         {status === "pending_review"
           ? "正在等待管理员审核。"
-          : status === "rejected"
-            ? "可点进编辑页修改后重新送审。"
-            : "当前状态没有可执行的卖家动作。"}
+          : "当前状态没有可执行的卖家动作。"}
       </p>
     );
   }

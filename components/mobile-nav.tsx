@@ -4,10 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   CircleUserRound,
+  FolderKanban,
+  Heart,
   FilePlus2,
   Home,
   ListChecks,
   Shield,
+  TriangleAlert,
   Users,
 } from "lucide-react";
 
@@ -53,6 +56,16 @@ export function MobileNav({ viewer }: { viewer: Viewer | null }) {
         icon: ListChecks,
       },
       {
+        href: "/me/reservations",
+        label: "预约",
+        icon: ListChecks,
+      },
+      {
+        href: "/me/favorites",
+        label: "收藏",
+        icon: Heart,
+      },
+      {
         href: "/me/profile",
         label: "资料",
         icon: CircleUserRound,
@@ -70,6 +83,16 @@ export function MobileNav({ viewer }: { viewer: Viewer | null }) {
           href: "/admin/members",
           label: "成员",
           icon: Users,
+        },
+        {
+          href: "/admin/reports",
+          label: "举报",
+          icon: TriangleAlert,
+        },
+        {
+          href: "/admin/categories",
+          label: "分类",
+          icon: FolderKanban,
         },
       );
     }

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { ListingForm } from "@/components/listing-form";
 import { requireActiveViewer } from "@/lib/auth";
+import { getSelectableCategorySettings } from "@/lib/data/categories";
 import { getEditableListing } from "@/lib/data/listings";
 import { updateListingAction } from "@/lib/actions/listings";
 
@@ -23,6 +24,7 @@ export default async function EditListingPage({ params }: EditListingPageProps) 
   }
 
   const boundAction = updateListingAction.bind(null, id);
+  const categorySettings = await getSelectableCategorySettings(detail.listing.category);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -33,7 +35,7 @@ export default async function EditListingPage({ params }: EditListingPageProps) 
             修改后会重新进入审核队列
           </h1>
           <p className="text-sm leading-7 text-zinc-500">
-            当前内容由管理员可见。若你重新上传图片，将会替换现有图片组。
+            当前内容由管理员可见。你可以删除、重排现有图片，或新增图片追加到末尾。
           </p>
         </div>
 
@@ -41,6 +43,12 @@ export default async function EditListingPage({ params }: EditListingPageProps) 
           action={boundAction}
           mode="edit"
           viewerHasDefaultContact={Boolean(viewer.contactWechat)}
+          categoryOptions={categorySettings.map((item) => ({
+            value: item.category,
+            label: item.label,
+            description: item.description,
+            submissionHint: item.submissionHint,
+          }))}
           initialValues={{
             title: detail.listing.title,
             description: detail.listing.description,

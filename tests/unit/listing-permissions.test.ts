@@ -78,8 +78,16 @@ describe("canViewerEditListing", () => {
 });
 
 describe("canSellerTransitionListing", () => {
-  it("allows published to reserved", () => {
-    expect(canSellerTransitionListing("published", "reserved")).toBe(true);
+  it("allows draft to pending_review", () => {
+    expect(canSellerTransitionListing("draft", "pending_review")).toBe(true);
+  });
+
+  it("does not allow published to reserved directly", () => {
+    expect(canSellerTransitionListing("published", "reserved")).toBe(false);
+  });
+
+  it("does not allow reserved to completed directly", () => {
+    expect(canSellerTransitionListing("reserved", "completed")).toBe(false);
   });
 
   it("does not allow rejected to completed directly", () => {

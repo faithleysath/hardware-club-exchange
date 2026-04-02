@@ -1,15 +1,24 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useTransition } from "react";
+import { useForm, type Resolver } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getErrorMessage } from "@/lib/client-action-form";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { passwordLoginSchema } from "@/lib/validators";
 
 type LoginFormProps = {
   nextPath?: string;
   initialMessage?: string | null;
   initialMessageIsError?: boolean;
+};
+
+type LoginFormValues = {
+  email: string;
+  password: string;
 };
 
 function getPasswordSignInErrorMessage(message: string) {
@@ -39,6 +48,14 @@ export function LoginForm({
   const [isOAuthPending, startOAuthTransition] = useTransition();
   const [isPasswordPending, startPasswordTransition] = useTransition();
   const safeNextPath = nextPath && nextPath.startsWith("/") ? nextPath : "/";
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(passwordLoginSchema) as unknown as Resolver<LoginFormValues>,
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+    mode: "onBlur",
+  });
 
   return (
     <div className="space-y-6">
@@ -61,25 +78,8 @@ export function LoginForm({
 
       <form
         className="space-y-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-
-          const formData = new FormData(event.currentTarget);
-          const email = String(formData.get("email") ?? "").trim().toLowerCase();
-          const password = String(formData.get("password") ?? "");
-
-          if (!email) {
-            setIsError(true);
-            setMessage("请输入邮箱。");
-            return;
-          }
-
-          if (!password) {
-            setIsError(true);
-            setMessage("请输入密码。");
-            return;
-          }
-
+        noValidate
+        onSubmit={form.handleSubmit(({ email, password }) => {
           startPasswordTransition(async () => {
             const supabase = createSupabaseBrowserClient();
             const { error } = await supabase.auth.signInWithPassword({
@@ -97,7 +97,7 @@ export function LoginForm({
             setMessage("登录成功，正在进入平台...");
             window.location.assign(safeNextPath);
           });
-        }}
+        })}
       >
         <div className="space-y-2">
           <p className="text-sm font-medium text-zinc-800">邮箱登录</p>
@@ -108,12 +108,31 @@ export function LoginForm({
 
         <label className="block space-y-2">
           <span className="text-sm font-medium text-zinc-800">邮箱</span>
-          <Input name="email" type="email" autoComplete="email" placeholder="member@example.com" />
+          <Input
+            {...form.register("email")}
+            type="email"
+            autoComplete="email"
+            placeholder="member@example.com"
+          />
+          {form.formState.errors.email ? (
+            <span className="text-xs text-red-600">
+              {getErrorMessage(form.formState.errors.email.message)}
+            </span>
+          ) : null}
         </label>
 
         <label className="block space-y-2">
           <span className="text-sm font-medium text-zinc-800">密码</span>
-          <Input name="password" type="password" autoComplete="current-password" />
+          <Input
+            {...form.register("password")}
+            type="password"
+            autoComplete="current-password"
+          />
+          {form.formState.errors.password ? (
+            <span className="text-xs text-red-600">
+              {getErrorMessage(form.formState.errors.password.message)}
+            </span>
+          ) : null}
         </label>
 
         <Button className="w-full" type="submit" disabled={isOAuthPending || isPasswordPending}>

@@ -45,6 +45,18 @@ export function SiteHeader({ viewer }: { viewer: Viewer | null }) {
                   我的发布
                 </Link>
                 <Link
+                  href="/me/reservations"
+                  className={buttonVariants({ variant: "ghost", size: "sm" })}
+                >
+                  我的预约
+                </Link>
+                <Link
+                  href="/me/favorites"
+                  className={buttonVariants({ variant: "ghost", size: "sm" })}
+                >
+                  我的收藏
+                </Link>
+                <Link
                   href="/me/profile"
                   className={buttonVariants({ variant: "ghost", size: "sm" })}
                 >
@@ -69,6 +81,18 @@ export function SiteHeader({ viewer }: { viewer: Viewer | null }) {
                       className={buttonVariants({ variant: "ghost", size: "sm" })}
                     >
                       审计日志
+                    </Link>
+                    <Link
+                      href="/admin/reports"
+                      className={buttonVariants({ variant: "ghost", size: "sm" })}
+                    >
+                      举报处理
+                    </Link>
+                    <Link
+                      href="/admin/categories"
+                      className={buttonVariants({ variant: "ghost", size: "sm" })}
+                    >
+                      分类管理
                     </Link>
                   </>
                 ) : null}

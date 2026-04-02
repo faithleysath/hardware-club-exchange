@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   adminPasswordResetSchema,
+  categorySettingSchema,
+  reportCreateSchema,
   listingFormSchema,
   managedMemberAccountSchema,
   passwordLoginSchema,
   profileFormSchema,
+  reservationRequestSchema,
 } from "@/lib/validators";
 
 describe("listingFormSchema", () => {
@@ -116,5 +119,44 @@ describe("adminPasswordResetSchema", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe("reservationRequestSchema", () => {
+  it("accepts a valid request payload", () => {
+    const result = reservationRequestSchema.parse({
+      listingId: "550e8400-e29b-41d4-a716-446655440000",
+      message: "  想约周三晚上面交  ",
+    });
+
+    expect(result.message).toBe("想约周三晚上面交");
+  });
+});
+
+describe("reportCreateSchema", () => {
+  it("rejects report reasons that are too short", () => {
+    const result = reportCreateSchema.safeParse({
+      listingId: "550e8400-e29b-41d4-a716-446655440000",
+      reason: "太短",
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("categorySettingSchema", () => {
+  it("normalizes category settings and converts booleans", () => {
+    const result = categorySettingSchema.parse({
+      category: "board",
+      label: "开发板",
+      description: "  常见主控开发板  ",
+      submissionHint: "  写清芯片型号  ",
+      sortOrder: "3",
+      isActive: "true",
+    });
+
+    expect(result.sortOrder).toBe(3);
+    expect(result.isActive).toBe(true);
+    expect(result.description).toBe("常见主控开发板");
   });
 });

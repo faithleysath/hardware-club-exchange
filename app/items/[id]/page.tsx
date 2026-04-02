@@ -2,11 +2,25 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
-import { ListingStatusBadge } from "@/components/status-badge";
+import {
+  FavoriteToggleButton,
+} from "@/components/favorite-toggle-button";
+import { ReportForm } from "@/components/report-form";
+import { ReservationRequestForm } from "@/components/reservation-request-form";
+import {
+  ListingStatusBadge,
+  ReservationStatusBadge,
+} from "@/components/status-badge";
 import { buttonVariants } from "@/components/ui/button";
+import {
+  createReportAction,
+  createReservationRequestAction,
+  updateReservationRequestAction,
+} from "@/lib/actions/engagement";
 import { requireActiveViewer } from "@/lib/auth";
+import { getCategoryLabelMap } from "@/lib/data/categories";
 import { getListingByIdForViewer } from "@/lib/data/listings";
-import { listingCategoryLabels, listingConditionLabels } from "@/lib/constants";
+import { listingConditionLabels } from "@/lib/constants";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 
 type ListingDetailPageProps = {
@@ -18,7 +32,10 @@ export default async function ListingDetailPage({
 }: ListingDetailPageProps) {
   const viewer = await requireActiveViewer();
   const { id } = await params;
-  const detail = await getListingByIdForViewer(id, viewer);
+  const [detail, categoryLabelMap] = await Promise.all([
+    getListingByIdForViewer(id, viewer),
+    getCategoryLabelMap(),
+  ]);
 
   if (!detail) {
     notFound();
@@ -29,6 +46,10 @@ export default async function ListingDetailPage({
     detail.seller.contactWechat ||
     detail.sellerEmail ||
     "卖家暂未填写联系方式";
+  const canRequestReservation =
+    viewer.id !== detail.listing.sellerId &&
+    (detail.listing.status === "published" || detail.listing.status === "reserved") &&
+    !detail.viewerState.reservation;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.08fr_0.92fr]">
@@ -83,7 +104,7 @@ export default async function ListingDetailPage({
             <div className="space-y-2">
               <div className="flex flex-wrap gap-2 text-sm text-zinc-500">
                 <span className="rounded-full bg-zinc-100 px-3 py-1">
-                  {listingCategoryLabels[detail.listing.category]}
+                  {categoryLabelMap[detail.listing.category]}
                 </span>
                 <span className="rounded-full bg-zinc-100 px-3 py-1">
                   {listingConditionLabels[detail.listing.condition]}
@@ -122,6 +143,21 @@ export default async function ListingDetailPage({
             <p className="mt-2 text-sm leading-7 text-emerald-800">{contact}</p>
           </div>
 
+          {viewer.id !== detail.listing.sellerId ? (
+            <div className="mt-6 flex flex-wrap gap-3">
+              <FavoriteToggleButton
+                listingId={detail.listing.id}
+                isFavorited={detail.viewerState.isFavorited}
+              />
+              <Link
+                href="/me/favorites"
+                className={buttonVariants({ variant: "secondary", size: "sm" })}
+              >
+                打开我的收藏
+              </Link>
+            </div>
+          ) : null}
+
           <div className="mt-6 flex flex-wrap gap-3">
             <Link href="/" className={buttonVariants({ variant: "secondary", size: "sm" })}>
               返回列表
@@ -136,6 +172,96 @@ export default async function ListingDetailPage({
             ) : null}
           </div>
         </div>
+
+        {viewer.id === detail.listing.sellerId ? (
+          <div className="rounded-[2.2rem] border border-black/5 bg-white p-6 shadow-[0_18px_60px_rgba(0,0,0,0.05)]">
+            <p className="text-sm font-medium text-zinc-500">预约看板</p>
+            <h2 className="mt-2 text-2xl font-semibold text-zinc-950">
+              当前共有 {detail.viewerState.incomingReservationCount} 条待处理或已接受预约
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-zinc-500">
+              卖家处理预约的完整入口在“我的预约”页，方便按时间顺序联系候补成员。
+            </p>
+            <Link
+              href="/me/reservations"
+              className={`${buttonVariants({ size: "sm" })} mt-5`}
+            >
+              去处理预约
+            </Link>
+          </div>
+        ) : null}
+
+        {viewer.id !== detail.listing.sellerId ? (
+          <div className="rounded-[2.2rem] border border-black/5 bg-white p-6 shadow-[0_18px_60px_rgba(0,0,0,0.05)]">
+            {detail.viewerState.reservation ? (
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-zinc-500">我的预约状态</p>
+                    <h2 className="mt-2 text-2xl font-semibold text-zinc-950">
+                      已提交预约
+                    </h2>
+                  </div>
+                  <ReservationStatusBadge status={detail.viewerState.reservation.status} />
+                </div>
+                {detail.viewerState.reservation.message ? (
+                  <p className="rounded-3xl bg-zinc-50 p-4 text-sm leading-7 text-zinc-700">
+                    留言：{detail.viewerState.reservation.message}
+                  </p>
+                ) : null}
+                <p className="text-sm text-zinc-500">
+                  提交时间：{formatDateTime(detail.viewerState.reservation.createdAt)}
+                </p>
+                {detail.viewerState.reservation.status === "pending" ||
+                detail.viewerState.reservation.status === "accepted" ? (
+                  <form action={updateReservationRequestAction}>
+                    <input
+                      type="hidden"
+                      name="requestId"
+                      value={detail.viewerState.reservation.id}
+                    />
+                    <input type="hidden" name="action" value="cancel" />
+                    <button
+                      type="submit"
+                      className={buttonVariants({ variant: "secondary", size: "sm" })}
+                    >
+                      取消预约
+                    </button>
+                  </form>
+                ) : null}
+              </div>
+            ) : canRequestReservation ? (
+              <ReservationRequestForm
+                listingId={detail.listing.id}
+                action={createReservationRequestAction}
+              />
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-zinc-500">预约入口</p>
+                <h2 className="text-2xl font-semibold text-zinc-950">当前不支持继续预约</h2>
+                <p className="text-sm leading-7 text-zinc-500">
+                  这条闲置已经结束流转，或你当前已有一条待处理预约。
+                </p>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {viewer.id !== detail.listing.sellerId ? (
+          <div className="rounded-[2.2rem] border border-black/5 bg-white p-6 shadow-[0_18px_60px_rgba(0,0,0,0.05)]">
+            {detail.viewerState.hasOpenReport ? (
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-zinc-500">举报状态</p>
+                <h2 className="text-2xl font-semibold text-zinc-950">你已经提交过一条待处理举报</h2>
+                <p className="text-sm leading-7 text-zinc-500">
+                  管理员会在举报处理页统一处理，不需要重复提交。
+                </p>
+              </div>
+            ) : (
+              <ReportForm listingId={detail.listing.id} action={createReportAction} />
+            )}
+          </div>
+        ) : null}
       </section>
     </div>
   );

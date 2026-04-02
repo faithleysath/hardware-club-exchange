@@ -4,14 +4,14 @@ import { MapPin, Tag } from "lucide-react";
 
 import { ListingStatusBadge } from "@/components/status-badge";
 import { buttonVariants } from "@/components/ui/button";
-import { listingCategoryLabels, listingConditionLabels } from "@/lib/constants";
+import { listingConditionLabels } from "@/lib/constants";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 
 type ListingCardProps = {
   listing: {
     id: string;
     title: string;
-    category: keyof typeof listingCategoryLabels;
+    categoryLabel: string;
     condition: keyof typeof listingConditionLabels;
     priceCents: number;
     campusArea: string | null;
@@ -54,7 +54,7 @@ export function ListingCard({ listing }: ListingCardProps) {
 
         <div className="flex flex-wrap gap-2 text-sm text-zinc-600">
           <span className="rounded-full bg-zinc-100 px-3 py-1">
-            {listingCategoryLabels[listing.category]}
+            {listing.categoryLabel}
           </span>
           <span className="rounded-full bg-zinc-100 px-3 py-1">
             {listingConditionLabels[listing.condition]}

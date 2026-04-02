@@ -87,7 +87,7 @@ export default async function MyListingsPage() {
                     href={`/me/listings/${listing.id}/edit`}
                     className={buttonVariants({ variant: "secondary", size: "sm" })}
                   >
-                    编辑并重新送审
+                    {listing.status === "draft" ? "继续编辑草稿" : "编辑并重新送审"}
                   </Link>
                 </div>
 

@@ -5,10 +5,18 @@
 ## Defaults Chosen For Now
 
 - 项目目录名使用 `hardware-club-exchange`。
-- 技术栈采用 `Next.js + Vercel + Supabase + Drizzle + Tailwind + shadcn/ui`。
+- 技术栈采用 `Next.js + Bun + Vercel + Supabase + Drizzle + Tailwind + shadcn/ui`。
 - 平台定位为社团内部工具，不对外开放。
 - 第一版采用邮箱登录 + 成员状态审核。
 - 第一版采用先审核后公开的内容流转模式。
+
+## Resolved Setup Decisions
+
+- GitHub 仓库已创建并连接到本地仓库。
+- Vercel 项目已创建并连接 GitHub。
+- Supabase 已通过 Vercel Integration 连接到 `hardware-club-exchange`。
+- 本地环境变量已经通过 `vercel env pull` 同步成功。
+- 当前不使用 Supabase 官方 quickstart 的演示表和演示页面。
 
 ## Questions To Confirm Later
 

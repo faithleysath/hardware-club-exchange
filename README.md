@@ -6,6 +6,14 @@
 
 当前目录已经包含最小可运行的 Next.js 应用和项目规划文档，可作为后续开发基线。
 
+截至 `2026-04-02`，项目外部资源已经完成首轮打通：
+
+- GitHub 仓库已连接：`https://github.com/faithleysath/hardware-club-exchange`
+- Vercel 项目已创建并连接 GitHub
+- 线上基线已发布：`https://hardware-club-exchange.vercel.app`
+- Supabase 已通过 Vercel Integration 连接到项目
+- 本地开发环境已执行过 `vercel env pull .env.development.local`
+
 后续开发默认遵循以下规则：
 
 - 先更新文档，再改需求边界。
@@ -37,6 +45,7 @@
 - `docs/ARCHITECTURE.md`：技术架构、模块边界、部署与安全方案
 - `docs/DATA_MODEL.md`：核心表结构、状态流转与访问控制设计
 - `docs/ROADMAP.md`：里程碑、阶段范围与实施顺序
+- `docs/HANDOFF.md`：当前项目状态、外部资源接入情况、下一阶段开工顺序
 - `docs/OPEN_QUESTIONS.md`：当前默认假设与后续待确认事项
 
 ## 默认假设
@@ -49,11 +58,12 @@
 
 ## 近期开发顺序
 
-1. 初始化 Next.js 项目、UI 基础设施与 Supabase 连接。
-2. 完成登录、成员资料、首页列表和详情页。
-3. 完成发布闲置、图片上传、我的发布与编辑能力。
-4. 完成管理员审核台、举报处理和审计日志。
-5. 完成预约流程、收藏、搜索筛选与可用性优化。
+1. 接入 Supabase Auth、基础登录页和受保护路由。
+2. 落 Drizzle schema、迁移和核心业务表。
+3. 把首页从 `Hello World` 改成平台首页骨架与导航。
+4. 完成闲置列表、详情、发布、图片上传和我的发布。
+5. 完成管理员审核台、举报处理和审计日志。
+6. 完成预约流程、收藏、搜索筛选与可用性优化。
 
 ## 本地开发
 
@@ -61,3 +71,9 @@
 - 启动开发环境：`bun run dev`
 - 运行检查：`bun run lint`
 - 生产构建：`bun run build`
+
+## 开发约束
+
+- 不要把 `.env.development.local`、`.env.local` 或任何密钥提交进 Git。
+- 不要照搬 Supabase 官方 quickstart 里的 `notes` 或 `countries` 示例表到本项目。
+- 不要在尚未需要前启用 Supabase Preview Branch。

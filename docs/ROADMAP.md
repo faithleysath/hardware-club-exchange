@@ -4,6 +4,12 @@
 
 目标：完成可开发的基础设施和工程约束。
 
+当前状态：
+
+- 已完成最小可运行的 Next.js 基线。
+- 已完成首次 Vercel 生产部署。
+- 已完成 Supabase 与 Vercel 项目连接。
+
 交付项：
 
 - 初始化 Next.js App Router 项目
@@ -11,6 +17,12 @@
 - 创建 Supabase 项目并配置 Auth、Storage 和 Postgres
 - 建立基础 layout、导航和受保护路由方案
 - 建立 lint、format、test 基线
+
+下一步重点：
+
+- 接入真实的 Supabase Auth
+- 引入 Drizzle 与迁移流程
+- 建立首页和登录后的应用骨架
 
 ## Phase 1: MVP
 

@@ -3,67 +3,27 @@
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
-export function LoginForm({ nextPath }: { nextPath?: string }) {
-  const [message, setMessage] = useState<string | null>(null);
-  const [isError, setIsError] = useState(false);
+type LoginFormProps = {
+  nextPath?: string;
+  initialMessage?: string | null;
+  initialMessageIsError?: boolean;
+};
+
+export function LoginForm({
+  nextPath,
+  initialMessage = null,
+  initialMessageIsError = false,
+}: LoginFormProps) {
+  const [message, setMessage] = useState<string | null>(initialMessage);
+  const [isError, setIsError] = useState(initialMessageIsError);
   const [isPending, startTransition] = useTransition();
 
   return (
-    <form
-      className="space-y-5"
-      onSubmit={(event) => {
-        event.preventDefault();
-
-        const formData = new FormData(event.currentTarget);
-        const email = String(formData.get("email") ?? "").trim();
-
-        if (!email) {
-          setIsError(true);
-          setMessage("请先输入社团邮箱。");
-          return;
-        }
-
-        startTransition(async () => {
-          const supabase = createSupabaseBrowserClient();
-          const redirectTo = new URL("/auth/confirm", window.location.origin);
-
-          if (nextPath) {
-            redirectTo.searchParams.set("next", nextPath);
-          }
-
-          const { error } = await supabase.auth.signInWithOtp({
-            email,
-            options: {
-              emailRedirectTo: redirectTo.toString(),
-            },
-          });
-
-          if (error) {
-            setIsError(true);
-            setMessage(error.message);
-            return;
-          }
-
-          setIsError(false);
-          setMessage("登录链接已发出。打开邮箱里的 Magic Link 后会自动回到平台。");
-        });
-      }}
-    >
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-zinc-800" htmlFor="email">
-          社团邮箱
-        </label>
-        <Input
-          id="email"
-          name="email"
-          type="email"
-          placeholder="name@example.com"
-          autoComplete="email"
-          required
-        />
+    <div className="space-y-5">
+      <div className="rounded-[1.6rem] border border-zinc-200 bg-zinc-50/80 p-5 text-sm leading-7 text-zinc-600">
+        首次登录会自动创建成员档案。当前系统还没有成员数据时，第一位登录成功的账号会自动成为管理员。
       </div>
 
       {message ? (
@@ -78,9 +38,44 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
         </div>
       ) : null}
 
-      <Button className="w-full" type="submit" disabled={isPending}>
-        {isPending ? "发送中..." : "发送登录链接"}
+      <Button
+        className="w-full"
+        type="button"
+        disabled={isPending}
+        onClick={() => {
+          startTransition(async () => {
+            const supabase = createSupabaseBrowserClient();
+            const redirectTo = new URL("/auth/callback", window.location.origin);
+
+            if (nextPath) {
+              redirectTo.searchParams.set("next", nextPath);
+            }
+
+            const { error } = await supabase.auth.signInWithOAuth({
+              provider: "github",
+              options: {
+                redirectTo: redirectTo.toString(),
+              },
+            });
+
+            if (error) {
+              setIsError(true);
+              setMessage(error.message);
+              return;
+            }
+
+            setIsError(false);
+            setMessage("正在跳转到 GitHub 授权...");
+          });
+        }}
+      >
+        {isPending ? "跳转中..." : "使用 GitHub 登录"}
       </Button>
-    </form>
+
+      <p className="text-center text-xs leading-6 text-zinc-500">
+        如果按钮点击后提示 provider 未启用，需要先在 Supabase Auth 里开启 GitHub Provider，
+        并把当前站点的 `/auth/callback` 加入重定向白名单。
+      </p>
+    </div>
   );
 }

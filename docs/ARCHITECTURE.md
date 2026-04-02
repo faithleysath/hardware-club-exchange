@@ -61,7 +61,7 @@ flowchart LR
 
 ### Authentication
 
-- 默认采用邮箱 Magic Link 或 OTP 登录。
+- 默认采用 GitHub OAuth 登录。
 - 初次登录后创建或补全成员资料。
 - 账号只有在成员状态为 `active` 时才拥有完整功能。
 

@@ -18,12 +18,19 @@
 
 ## 2. What Already Works
 
-- Supabase Auth 邮箱 Magic Link 登录已经接入。
+- Supabase Auth GitHub OAuth 登录已经接入。
 - 首位登录用户会自动成为 `active admin`，后续用户默认进入 `pending` 状态。
 - 成员端已经具备：首页筛选、详情页、发布、编辑、我的发布、图片上传。
 - 管理端已经具备：审核台、成员管理、审计日志。
 - Drizzle schema、SQL migration、RLS 策略和私有图片 bucket 已经创建并成功落库。
 - `bun run lint`、`bun run test`、`bun run build`、`bun run test:e2e` 均已本地验证通过。
+
+认证接入注意事项：
+
+- 代码侧已经切换为 GitHub OAuth，不再默认依赖邮箱 Magic Link。
+- 在真正可登录前，仍需在 Supabase Dashboard 中启用 GitHub Provider，并录入 GitHub OAuth App 的 `Client ID` / `Client Secret`。
+- GitHub OAuth App 的 callback URL 应填写 Supabase 提供的 `https://<project-ref>.supabase.co/auth/v1/callback`。
+- Supabase URL Configuration 里的 Redirect URLs 需要加入应用自身的 `/auth/callback`，至少覆盖本地、Preview、Production 三个入口。
 
 ## 3. Current Stack
 

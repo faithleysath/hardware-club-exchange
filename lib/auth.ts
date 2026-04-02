@@ -59,12 +59,17 @@ async function ensureProfileForUser(user: NonNullable<Awaited<ReturnType<typeof 
     .where(and(eq(profiles.role, "admin"), eq(profiles.status, "active")));
 
   const shouldBootstrapAdmin = Number(adminCountRow?.total ?? 0) === 0;
+  const displayNameCandidates = [
+    user.user_metadata.user_name,
+    user.user_metadata.preferred_username,
+    user.user_metadata.display_name,
+    user.user_metadata.full_name,
+    user.user_metadata.name,
+  ];
   const displayName =
-    (typeof user.user_metadata.display_name === "string" &&
-      user.user_metadata.display_name.trim()) ||
-    (typeof user.user_metadata.full_name === "string" &&
-      user.user_metadata.full_name.trim()) ||
-    getEmailName(user.email);
+    displayNameCandidates.find(
+      (value): value is string => typeof value === "string" && value.trim().length > 0,
+    ) ?? getEmailName(user.email);
 
   const [createdProfile] = await db
     .insert(profiles)

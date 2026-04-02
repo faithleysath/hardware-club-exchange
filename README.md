@@ -18,6 +18,7 @@
 当前版本已完成的能力：
 
 - Supabase Auth GitHub OAuth 登录与会话恢复
+- 管理员受管控创建邮箱密码账号、重置成员密码，且不开放公开注册
 - 成员资料建档、待审核状态页与管理员成员激活
 - 闲置发布、编辑、图片上传、列表浏览、详情页与卖家状态切换
 - 管理员审核台、成员管理页与审计日志页
@@ -26,7 +27,8 @@
 
 登录接入说明：
 
-- 代码已经切到 GitHub OAuth。
+- 当前支持两种入口：GitHub OAuth，以及管理员预先创建的邮箱密码账号。
+- 邮箱密码账号不开放公开注册，只能由管理员在成员管理页创建。
 - 首次启用前，需要在 Supabase `Authentication -> Sign In / Providers -> GitHub` 中启用 GitHub Provider。
 - GitHub OAuth App 的回调地址应使用 Supabase 提供的 `https://<project-ref>.supabase.co/auth/v1/callback`。
 - 同时要在 Supabase 的 Redirect URLs 中加入当前应用地址的 `/auth/callback`，至少包含本地、Preview 和 Production。
@@ -72,7 +74,7 @@
 - 第一版不做在线支付，不承担担保交易责任。
 - 第一版不做站内即时聊天，交易沟通通过预留联系方式完成。
 - 第一版启用内容审核，闲置信息默认进入审核后再公开。
-- 登录方式以 GitHub OAuth 为主，成员资格通过管理员审批控制。
+- 登录方式以 GitHub OAuth 和管理员创建的邮箱密码账号为主，成员资格通过管理员审批控制。
 - 若当前平台还没有任何激活管理员，则首个成功登录的账号自动成为 `active admin`，用于完成初始引导。
 
 ## 下一阶段建议

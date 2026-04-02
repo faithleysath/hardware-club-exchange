@@ -4,6 +4,7 @@ import {
   listingCategoryValues,
   listingConditionValues,
   memberRoleValues,
+  memberStatusValues,
 } from "@/lib/constants";
 import { parsePriceToCents } from "@/lib/utils";
 
@@ -19,6 +20,13 @@ const optionalTrimmedText = (max: number) =>
     },
     z.string().max(max).optional(),
   );
+
+const normalizedEmail = z
+  .string()
+  .trim()
+  .min(1, "请输入邮箱")
+  .email("请输入合法邮箱")
+  .transform((value) => value.toLowerCase());
 
 export const listingFormSchema = z.object({
   title: z
@@ -104,6 +112,32 @@ export const memberRoleFormSchema = z.object({
   nextRole: z.enum(memberRoleValues),
 });
 
+export const passwordLoginSchema = z.object({
+  email: normalizedEmail,
+  password: z.string().min(1, "请输入密码"),
+});
+
+export const managedMemberAccountSchema = z.object({
+  email: normalizedEmail,
+  password: z
+    .string()
+    .min(8, "临时密码至少需要 8 位")
+    .max(72, "密码请控制在 72 位以内"),
+  displayName: optionalTrimmedText(24),
+  initialStatus: z.enum(memberStatusValues).refine(
+    (value) => value === "pending" || value === "active",
+    "新建账号只能设为待审核或已激活",
+  ),
+});
+
+export const adminPasswordResetSchema = z.object({
+  memberId: z.string().uuid(),
+  password: z
+    .string()
+    .min(8, "新密码至少需要 8 位")
+    .max(72, "密码请控制在 72 位以内"),
+});
+
 export const listingStatusActionSchema = z.object({
   listingId: z.string().uuid(),
   nextStatus: z.enum(["published", "reserved", "completed", "removed"]),
@@ -117,3 +151,6 @@ export const adminReviewActionSchema = z.object({
 
 export type ListingFormValues = z.infer<typeof listingFormSchema>;
 export type ProfileFormValues = z.infer<typeof profileFormSchema>;
+export type PasswordLoginValues = z.infer<typeof passwordLoginSchema>;
+export type ManagedMemberAccountValues = z.infer<typeof managedMemberAccountSchema>;
+export type AdminPasswordResetValues = z.infer<typeof adminPasswordResetSchema>;

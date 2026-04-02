@@ -61,7 +61,8 @@ flowchart LR
 
 ### Authentication
 
-- 默认采用 GitHub OAuth 登录。
+- 支持 GitHub OAuth 登录。
+- 也支持由管理员预先创建的邮箱密码账号，默认不开放公开注册。
 - 初次登录后创建或补全成员资料。
 - 账号只有在成员状态为 `active` 时才拥有完整功能。
 

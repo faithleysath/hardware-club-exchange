@@ -32,12 +32,12 @@ function buildDefaultCategorySettings(): CategorySettingRecord[] {
   }));
 }
 
-function isMissingRelationError(error: unknown) {
+function isRecoverableCategorySettingsError(error: unknown) {
   return (
     error !== null &&
     typeof error === "object" &&
     "code" in error &&
-    error.code === "42P01"
+    (error.code === "42P01" || error.code === "57014")
   );
 }
 
@@ -85,7 +85,7 @@ export const getCategorySettings = cache(async () => {
 
     return mergeCategorySettings(rows);
   } catch (error) {
-    if (isMissingRelationError(error)) {
+    if (isRecoverableCategorySettingsError(error)) {
       return buildDefaultCategorySettings();
     }
 

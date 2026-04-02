@@ -150,6 +150,20 @@ export async function findListingByTitle(title: string) {
   return rows[0] ?? null;
 }
 
+export async function findAuthUserIdByEmail(email: string) {
+  const rows = await sql<{
+    id: string;
+  }[]>`
+    select id
+    from auth.users
+    where lower(email) = lower(${email})
+    order by created_at desc
+    limit 1
+  `;
+
+  return rows[0]?.id ?? null;
+}
+
 export async function cleanupSeededData(params: {
   userIds: string[];
   listingIds: string[];

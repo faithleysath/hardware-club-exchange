@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { type FormEvent, useRef, useState, useTransition } from "react";
 import type { FieldValues, Path, UseFormReturn } from "react-hook-form";
 
 import {
@@ -20,6 +20,20 @@ type UseServerActionFormOptions<TValues extends FieldValues> = {
     nextState: ActionState,
   ) => void;
 };
+
+function getActionErrorState(error: unknown): ActionState {
+  const details = getErrorMessage(error);
+  const baseMessage = "操作失败，请稍后重试。";
+
+  return {
+    status: "error",
+    message:
+      process.env.NODE_ENV === "development" && details
+        ? `${baseMessage} ${details}`
+        : baseMessage,
+    fieldErrors: {},
+  };
+}
 
 export function getErrorMessage(error: unknown) {
   if (typeof error === "string") {
@@ -47,31 +61,34 @@ export function useServerActionForm<TValues extends FieldValues>(
   const [state, setState] = useState<ActionState>(initialActionState);
   const [isPending, startTransition] = useTransition();
 
-  const onSubmit = form.handleSubmit((_values, event) => {
-    const formElement = event?.currentTarget;
+  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+    const formElement = event.currentTarget;
 
-    if (!formElement) {
-      return;
-    }
+    return form.handleSubmit(() => {
+      startTransition(async () => {
+        try {
+          const nextState = await action(state, new FormData(formElement));
 
-    startTransition(async () => {
-      const nextState = await action(state, new FormData(formElement));
+          setState(nextState);
+          form.clearErrors();
 
-      setState(nextState);
-      form.clearErrors();
+          for (const [field, message] of Object.entries(nextState.fieldErrors)) {
+            form.setError(field as Path<TValues>, {
+              type: "server",
+              message,
+            });
+          }
 
-      for (const [field, message] of Object.entries(nextState.fieldErrors)) {
-        form.setError(field as Path<TValues>, {
-          type: "server",
-          message,
-        });
-      }
-
-      if (nextState.status === "success") {
-        options.onSuccess?.(form, formElement, nextState);
-      }
-    });
-  });
+          if (nextState.status === "success") {
+            options.onSuccess?.(form, formElement, nextState);
+          }
+        } catch (error) {
+          form.clearErrors();
+          setState(getActionErrorState(error));
+        }
+      });
+    })(event);
+  };
 
   return {
     formRef,

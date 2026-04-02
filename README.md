@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-当前目录已经包含最小可运行的 Next.js 应用和项目规划文档，可作为后续开发基线。
+当前目录已经包含可运行的 MVP 1.0 Web 应用、数据库迁移、测试基线和交接文档，可直接用于内部试运行。
 
 截至 `2026-04-02`，项目外部资源已经完成首轮打通：
 
@@ -13,8 +13,25 @@
 - 线上基线已发布：`https://hardware-club-exchange.vercel.app`
 - Supabase 已通过 Vercel Integration 连接到项目
 - 本地开发环境已执行过 `vercel env pull .env.development.local`
+- 当前 `Preview` 与 `Production` 仍共用同一套 Supabase / Postgres，预览地址独立但数据未隔离，详见 `docs/ENVIRONMENTS.md`
 
-后续开发默认遵循以下规则：
+当前版本已完成的能力：
+
+- Supabase Auth GitHub OAuth 登录与会话恢复
+- 成员资料建档、待审核状态页与管理员成员激活
+- 闲置发布、编辑、图片上传、列表浏览、详情页与卖家状态切换
+- 管理员审核台、成员管理页与审计日志页
+- Drizzle schema、SQL migration、核心 RLS 策略与私有图片 bucket
+- Vitest 单测、Playwright smoke test、本地 lint 与 production build 验证
+
+登录接入说明：
+
+- 代码已经切到 GitHub OAuth。
+- 首次启用前，需要在 Supabase `Authentication -> Sign In / Providers -> GitHub` 中启用 GitHub Provider。
+- GitHub OAuth App 的回调地址应使用 Supabase 提供的 `https://<project-ref>.supabase.co/auth/v1/callback`。
+- 同时要在 Supabase 的 Redirect URLs 中加入当前应用地址的 `/auth/callback`，至少包含本地、Preview 和 Production。
+
+后续开发仍默认遵循以下规则：
 
 - 先更新文档，再改需求边界。
 - 先完成 MVP，再考虑扩展能力。
@@ -46,6 +63,7 @@
 - `docs/DATA_MODEL.md`：核心表结构、状态流转与访问控制设计
 - `docs/ROADMAP.md`：里程碑、阶段范围与实施顺序
 - `docs/HANDOFF.md`：当前项目状态、外部资源接入情况、下一阶段开工顺序
+- `docs/ENVIRONMENTS.md`：Vercel Preview / Production 与 Supabase 数据环境边界
 - `docs/OPEN_QUESTIONS.md`：当前默认假设与后续待确认事项
 
 ## 默认假设
@@ -54,26 +72,36 @@
 - 第一版不做在线支付，不承担担保交易责任。
 - 第一版不做站内即时聊天，交易沟通通过预留联系方式完成。
 - 第一版启用内容审核，闲置信息默认进入审核后再公开。
-- 登录方式以邮箱 Magic Link 或 OTP 为主，成员资格通过管理员审批控制。
+- 登录方式以 GitHub OAuth 为主，成员资格通过管理员审批控制。
+- 若当前平台还没有任何激活管理员，则首个成功登录的账号自动成为 `active admin`，用于完成初始引导。
 
-## 近期开发顺序
+## 下一阶段建议
 
-1. 接入 Supabase Auth、基础登录页和受保护路由。
-2. 落 Drizzle schema、迁移和核心业务表。
-3. 把首页从 `Hello World` 改成平台首页骨架与导航。
-4. 完成闲置列表、详情、发布、图片上传和我的发布。
-5. 完成管理员审核台、举报处理和审计日志。
-6. 完成预约流程、收藏、搜索筛选与可用性优化。
+1. 进入 Phase 1.1，补预约申请流、我的预约页和卖家处理逻辑。
+2. 增加收藏与举报入口，把 `favorites`、`reports` 从表结构落到 UI。
+3. 增加图片删除/重排和更细的卖家编辑体验。
+4. 为登录、发布、审核三条主链路补更完整的端到端测试。
+5. 视使用反馈决定是否继续做通知占位、搜索排序增强与运营统计。
 
 ## 本地开发
 
 - 安装依赖：`bun install`
 - 启动开发环境：`bun run dev`
 - 运行检查：`bun run lint`
+- 运行单测：`bun run test`
+- 运行浏览器 smoke test：`bun run test:e2e`
 - 生产构建：`bun run build`
+
+说明：
+
+- `.env.example` 列出了应用运行真正依赖的最小环境变量集合。
+- 本地若已执行 `vercel env pull .env.development.local`，建议额外同步一份到 `.env.local` 供 `next build` 使用。
+- `.env.local` 和 `.env.development.local` 都不要提交进 Git。
+- 在完成环境隔离前，Preview 部署只能用于界面和流程验收，不应视为独立测试数据库。
 
 ## 开发约束
 
 - 不要把 `.env.development.local`、`.env.local` 或任何密钥提交进 Git。
 - 不要照搬 Supabase 官方 quickstart 里的 `notes` 或 `countries` 示例表到本项目。
 - 不要在尚未需要前启用 Supabase Preview Branch。
+- 在 `Preview` 与 `Production` 未完成数据库隔离前，不要在 Preview 上做真实审核、真实上架或其他高风险写操作。

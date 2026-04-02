@@ -17,6 +17,7 @@
 - Supabase 已通过 Vercel Integration 连接到 `hardware-club-exchange`。
 - 本地环境变量已经通过 `vercel env pull` 同步成功。
 - 当前不使用 Supabase 官方 quickstart 的演示表和演示页面。
+- 若当前平台尚无任何激活管理员，则首个成功登录的账号自动成为 `active admin` 以完成冷启动。
 
 ## Questions To Confirm Later
 

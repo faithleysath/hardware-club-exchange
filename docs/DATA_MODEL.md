@@ -3,7 +3,7 @@
 ## 1. Design Principles
 
 - 使用 `uuid` 作为主键，避免可枚举 ID。
-- 所有业务表包含 `created_at` 和 `updated_at`。
+- 主要可变业务表包含 `created_at` 和 `updated_at`；关系表或审计表按实际需要精简字段。
 - 状态字段采用明确枚举，避免模糊字符串。
 - 重要状态切换写入审计日志。
 
@@ -36,7 +36,7 @@
 | seller_id | uuid | 关联 `profiles.id` |
 | title | text | 标题 |
 | description | text | 描述 |
-| category | text | 如 `board`, `sensor`, `tool`, `device`, `other` |
+| category | text | 如 `board`, `sensor`, `tool`, `device`, `component`, `other` |
 | condition | text | 如 `new`, `like_new`, `used`, `for_parts` |
 | price_cents | int | 价格，单位分 |
 | contact_note | text | 覆盖默认联系方式的补充说明，第一版不单独拆出 QQ / 手机号字段 |
@@ -61,6 +61,21 @@
 | alt_text | text | 可选 |
 | sort_order | int | 显示顺序 |
 | created_at | timestamptz | 创建时间 |
+
+### `listing_category_settings`
+
+分类配置表。
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| category | text | 主键，对应 `listings.category` 枚举 |
+| label | text | 前台展示名称 |
+| description | text | 分类说明 |
+| submission_hint | text | 发布建议 |
+| sort_order | int | 前台排序 |
+| is_active | boolean | 是否对普通成员可见 |
+| created_at | timestamptz | 创建时间 |
+| updated_at | timestamptz | 更新时间 |
 
 ### `reservation_requests`
 
@@ -129,6 +144,12 @@
 
 `draft -> pending_review -> published -> reserved -> completed`
 
+说明：
+
+- `reserved` 由卖家或管理员接受某条预约后自动进入。
+- `completed` 由关闭已接受预约后自动进入。
+- 卖家不应绕过预约流直接把 `published` 改成 `reserved` 或 `completed`。
+
 允许的旁路状态：
 
 - `pending_review -> rejected`
@@ -165,6 +186,11 @@
 - 图片的读权限跟随所属闲置。
 - 图片的写权限仅限所属卖家和管理员。
 
+### `listing_category_settings`
+
+- `active` 成员可读取启用中的分类配置。
+- 管理员可读取与更新全部分类配置。
+
 ### `reservation_requests`
 
 - 买家可读取自己的预约。
@@ -189,6 +215,7 @@
 
 - `listings(status, category, created_at desc)`
 - `listings(seller_id, status)`
+- `listing_category_settings(sort_order, is_active)`
 - `reservation_requests(listing_id, status)`
 - `reports(status, created_at desc)`
 - `favorites(user_id, created_at desc)`

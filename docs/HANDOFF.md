@@ -14,6 +14,8 @@
 - Supabase 已通过 Vercel Integration 连接到该项目
 - 本地已成功执行 `vercel env pull .env.development.local`
 - MVP 1.0 代码、数据库迁移和测试已经落地
+- Phase 1.1 核心能力已落地：预约申请与处理、我的预约、收藏、举报、举报处理
+- 分类管理与图片单张删除 / 重排 / 设封面能力已落地
 - 重要：当前 `Preview` 与 `Production` 仍指向同一套 Supabase / Postgres，预览环境尚未数据隔离，详见 `docs/ENVIRONMENTS.md`
 
 ## 2. What Already Works
@@ -22,9 +24,12 @@
 - 管理员现在可以直接创建邮箱密码账号、重置成员密码，且不开放公开注册。
 - 首位登录用户会自动成为 `active admin`，后续用户默认进入 `pending` 状态。
 - 成员端已经具备：首页筛选、详情页、发布、编辑、我的发布、图片上传。
-- 管理端已经具备：审核台、成员管理、审计日志。
+- 成员端已经具备：买家预约申请、卖家处理预约、我的预约、我的收藏、详情页举报。
+- 发布 / 编辑页已支持草稿保存，以及图片删除、重排、设封面和新增图片追加。
+- 管理端已经具备：审核台、成员管理、举报处理、分类管理、审计日志。
 - Drizzle schema、SQL migration、RLS 策略和私有图片 bucket 已经创建并成功落库。
-- `bun run lint`、`bun run test`、`bun run build`、`bun run test:e2e` 均已本地验证通过。
+- `bun run lint`、`bun run test`、`bun run build` 已在当前代码库验证通过。
+- Playwright 端到端用例已补到发布、审核、预约、收藏、举报主链路；运行仍依赖本地 Supabase / Postgres 环境变量与可写测试环境。
 
 认证接入注意事项：
 
@@ -57,11 +62,11 @@
 
 ## 5. Recommended Next Steps
 
-1. 进入 Phase 1.1：落预约申请、卖家接受/拒绝、我的预约页。
-2. 把 `favorites`、`reports` 的 UI 补齐，形成完整的可用性增强闭环。
-3. 增加图片删除/排序和更细的卖家草稿体验。
-4. 补更强的端到端测试，包括登录后的发布与审核链路。
-5. 根据试运行反馈决定搜索排序、通知占位和运营统计优先级。
+1. 优化搜索排序、筛选体验和首页发现效率。
+2. 继续扩展端到端测试，覆盖图片编辑、分类管理、举报处理等回归场景。
+3. 评估站内通知占位、自动归档、运营统计看板的优先级。
+4. 推进 Preview / Development / Production 的数据环境隔离。
+5. 根据试运行反馈决定是否引入发布模板、信誉标记等运营增强。
 
 ## 6. Suggested Build Order
 
@@ -91,6 +96,10 @@
 - Profiles
 - Listings
 - Listing images
+- Reservations
+- Favorites
+- Reports
+- Category settings
 - Moderation
 - Audit logs
 
@@ -98,8 +107,8 @@
 
 已完成：
 
-- 单元测试覆盖校验与权限判断
-- 浏览器 smoke test 覆盖首页与登录页
+- 单元测试覆盖校验、权限判断与图片保留规则
+- 浏览器端到端用例已覆盖登录、发布、审核、预约、收藏、举报主路径
 - 本地 build / lint / Vercel-ready 验证
 
 ## 7. Reading Order For New Contributors
@@ -119,7 +128,7 @@
 - 启动开发：`bun run dev`
 - 静态检查：`bun run lint`
 - 单元测试：`bun run test`
-- 浏览器 smoke test：`bun run test:e2e`
+- 端到端测试：`bun run test:e2e`
 - 生产构建：`bun run build`
 
 ## 9. Notes On External Resources

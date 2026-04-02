@@ -139,6 +139,10 @@ export const adminPasswordResetSchema = z.object({
     .max(72, "密码请控制在 72 位以内"),
 });
 
+export const memberDeleteSchema = z.object({
+  memberId: z.string().uuid(),
+});
+
 export const listingStatusActionSchema = z.object({
   listingId: z.string().uuid(),
   nextStatus: z.enum([

@@ -1,10 +1,12 @@
 import {
   createManagedMemberAccountAction,
+  deleteMemberAction,
   resetMemberPasswordAction,
   updateMemberRoleAction,
   updateMemberStatusAction,
 } from "@/lib/actions/admin";
 import { requireAdminViewer } from "@/lib/auth";
+import { AdminDeleteMemberForm } from "@/components/admin-delete-member-form";
 import { AdminResetPasswordForm } from "@/components/admin-reset-password-form";
 import { getMemberDirectory } from "@/lib/data/admin";
 import { AdminCreateMemberForm } from "@/components/admin-create-member-form";
@@ -20,6 +22,9 @@ export const metadata = {
 export default async function AdminMembersPage() {
   const viewer = await requireAdminViewer();
   const members = await getMemberDirectory();
+  const activeAdminCount = members.filter(
+    ({ profile }) => profile.role === "admin" && profile.status === "active",
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -115,11 +120,27 @@ export default async function AdminMembersPage() {
               </div>
             </div>
 
-            <div className="mt-5 border-t border-zinc-100 pt-5">
+            <div className="mt-5 grid gap-5 border-t border-zinc-100 pt-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
               <AdminResetPasswordForm
                 memberId={profile.id}
                 email={email}
                 action={resetMemberPasswordAction}
+              />
+
+              <AdminDeleteMemberForm
+                memberId={profile.id}
+                displayName={profile.displayName}
+                email={email}
+                action={deleteMemberAction}
+                disabledReason={
+                  viewer.id === profile.id
+                    ? "当前登录的管理员账号不能在这里直接删除。"
+                    : profile.role === "admin" &&
+                        profile.status === "active" &&
+                        activeAdminCount <= 1
+                      ? "系统至少要保留 1 名激活管理员，所以这个账号暂时不能删除。"
+                      : undefined
+                }
               />
             </div>
           </article>

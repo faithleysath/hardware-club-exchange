@@ -11,12 +11,14 @@ import {
 import { requireAdminViewer } from "@/lib/auth";
 import { authUsers } from "@/lib/db/auth-schema";
 import { db } from "@/lib/db/client";
-import { auditLogs, profiles } from "@/lib/db/schema";
+import { auditLogs, listingImages, listings, profiles } from "@/lib/db/schema";
+import { deleteListingImages } from "@/lib/media";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getEmailName } from "@/lib/utils";
 import {
   adminPasswordResetSchema,
   managedMemberAccountSchema,
+  memberDeleteSchema,
   memberRoleFormSchema,
   memberStatusFormSchema,
 } from "@/lib/validators";
@@ -42,6 +44,37 @@ async function getAuthUserById(profileId: string) {
     .limit(1);
 
   return authUser ?? null;
+}
+
+async function getMemberListingDeletionSummary(profileId: string) {
+  const [ownedListings, ownedListingImages] = await Promise.all([
+    db
+      .select({
+        id: listings.id,
+        coverImagePath: listings.coverImagePath,
+      })
+      .from(listings)
+      .where(eq(listings.sellerId, profileId)),
+    db
+      .select({
+        storagePath: listingImages.storagePath,
+      })
+      .from(listingImages)
+      .innerJoin(listings, eq(listings.id, listingImages.listingId))
+      .where(eq(listings.sellerId, profileId)),
+  ]);
+
+  const imagePaths = [
+    ...new Set([
+      ...ownedListings.map((listing) => listing.coverImagePath),
+      ...ownedListingImages.map((image) => image.storagePath),
+    ]),
+  ];
+
+  return {
+    listingCount: ownedListings.length,
+    imagePaths,
+  };
 }
 
 async function getActiveAdminCount() {
@@ -265,6 +298,117 @@ export async function resetMemberPasswordAction(
     status: "success",
     message:
       "密码已重置。对方现在可以使用这个邮箱和新密码登录；如果原本只用 GitHub，这次也会补上邮箱密码登录。",
+    fieldErrors: {},
+  };
+}
+
+export async function deleteMemberAction(
+  _previousState: ActionState = initialActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  void _previousState;
+
+  const viewer = await requireAdminViewer();
+  const parsed = memberDeleteSchema.safeParse({
+    memberId: String(formData.get("memberId") ?? ""),
+  });
+
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "成员删除参数不合法。",
+      fieldErrors: {},
+    };
+  }
+
+  if (parsed.data.memberId === viewer.id) {
+    return {
+      status: "error",
+      message: "不能在这里删除当前登录的管理员账号。",
+      fieldErrors: {},
+    };
+  }
+
+  const [target, authUser, listingSummary] = await Promise.all([
+    getProfileById(parsed.data.memberId),
+    getAuthUserById(parsed.data.memberId),
+    getMemberListingDeletionSummary(parsed.data.memberId),
+  ]);
+
+  if (!target) {
+    return {
+      status: "error",
+      message: "未找到目标成员。",
+      fieldErrors: {},
+    };
+  }
+
+  if (!authUser) {
+    return {
+      status: "error",
+      message: "这个成员的登录账号不存在，暂时无法删除。",
+      fieldErrors: {},
+    };
+  }
+
+  if (
+    target.role === "admin" &&
+    target.status === "active" &&
+    (await getActiveAdminCount()) <= 1
+  ) {
+    return {
+      status: "error",
+      message: "至少保留 1 名激活管理员，不能删除最后一名管理员。",
+      fieldErrors: {},
+    };
+  }
+
+  const supabaseAdmin = createSupabaseAdminClient();
+  const { error } = await supabaseAdmin.auth.admin.deleteUser(parsed.data.memberId);
+
+  if (error) {
+    return {
+      status: "error",
+      message: "删除账号失败，请稍后再试。",
+      fieldErrors: {},
+    };
+  }
+
+  let imageCleanupFailed = false;
+
+  try {
+    await deleteListingImages(listingSummary.imagePaths);
+  } catch {
+    imageCleanupFailed = true;
+  }
+
+  try {
+    await db.insert(auditLogs).values({
+      actorId: viewer.id,
+      action: "profile.deleted",
+      targetType: "profile",
+      targetId: parsed.data.memberId,
+      metadata: {
+        email: authUser.email,
+        role: target.role,
+        status: target.status,
+        listingCount: listingSummary.listingCount,
+        imageCount: listingSummary.imagePaths.length,
+        imageCleanupFailed,
+      },
+    });
+  } catch {}
+
+  revalidateAdminPaths();
+  revalidatePath("/");
+  revalidatePath("/admin/review");
+  revalidatePath("/admin/reports");
+
+  return {
+    status: "success",
+    message: imageCleanupFailed
+      ? "成员账号和关联数据已删除，但有少量图片清理失败，请稍后检查存储桶。"
+      : "成员账号和关联数据已删除。",
     fieldErrors: {},
   };
 }

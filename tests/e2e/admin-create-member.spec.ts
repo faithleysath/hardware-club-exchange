@@ -39,3 +39,46 @@ test("admin can create a managed email account", async ({ page }) => {
     });
   }
 });
+
+test("admin can delete a member account", async ({ page }) => {
+  const runId = createRunId();
+  const admin = await seedUser({
+    email: `admin-delete-${runId}@example.com`,
+    password: "temporary-pass",
+    displayName: `Admin ${runId}`,
+    role: "admin",
+    status: "active",
+  });
+  const member = await seedUser({
+    email: `member-delete-${runId}@example.com`,
+    password: "temporary-pass",
+    displayName: `Member ${runId}`,
+    role: "member",
+    status: "active",
+  });
+
+  try {
+    await loginWithPassword(page, admin);
+    await page.goto("/admin/members");
+
+    page.once("dialog", async (dialog) => {
+      await dialog.accept();
+    });
+
+    const memberCard = page.locator("article").filter({ hasText: member.email });
+    await memberCard.getByRole("button", { name: "删除成员" }).click();
+
+    await expect(page.locator("article").filter({ hasText: member.email })).toHaveCount(0, {
+      timeout: 15000,
+    });
+    await expect
+      .poll(() => findAuthUserIdByEmail(member.email), { timeout: 15000 })
+      .toBeNull();
+  } finally {
+    await cleanupSeededData({
+      userIds: [admin.id],
+      listingIds: [],
+      imagePaths: [],
+    });
+  }
+});

@@ -99,12 +99,16 @@ flowchart LR
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `DATABASE_URL`
+- `POSTGRES_URL`
+- `POSTGRES_URL_NON_POOLING`
+- `NEXT_PUBLIC_PREVIEW_DATA_ISOLATED`（可选）
 
 说明：
 
 - `SUPABASE_SERVICE_ROLE_KEY` 只允许在服务端使用，不能暴露给浏览器。
-- `DATABASE_URL` 供 Drizzle migration 和服务端数据库访问使用。
+- `POSTGRES_URL` 供服务端数据库访问使用。
+- `POSTGRES_URL_NON_POOLING` 建议供 Drizzle migration 使用。
+- `NEXT_PUBLIC_PREVIEW_DATA_ISOLATED` 仅用于前端提示 Preview 是否已完成数据隔离。
 
 ## 8. Testing Strategy
 
@@ -118,3 +122,4 @@ flowchart LR
 - 数据库与 Storage 由 Supabase 承载。
 - 预览环境用于 UI 与业务流程验收。
 - 生产环境仅在文档和 schema 变更审查通过后发布。
+- 目标形态下，`Preview` 与 `Production` 应使用不同的 Supabase / Postgres 资源；如果两者仍共用同一套后端，则 Preview 只算部署隔离，不算数据隔离。

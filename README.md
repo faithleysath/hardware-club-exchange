@@ -13,6 +13,7 @@
 - 线上基线已发布：`https://hardware-club-exchange.vercel.app`
 - Supabase 已通过 Vercel Integration 连接到项目
 - 本地开发环境已执行过 `vercel env pull .env.development.local`
+- 当前 `Preview` 与 `Production` 仍共用同一套 Supabase / Postgres，预览地址独立但数据未隔离，详见 `docs/ENVIRONMENTS.md`
 
 当前版本已完成的能力：
 
@@ -55,6 +56,7 @@
 - `docs/DATA_MODEL.md`：核心表结构、状态流转与访问控制设计
 - `docs/ROADMAP.md`：里程碑、阶段范围与实施顺序
 - `docs/HANDOFF.md`：当前项目状态、外部资源接入情况、下一阶段开工顺序
+- `docs/ENVIRONMENTS.md`：Vercel Preview / Production 与 Supabase 数据环境边界
 - `docs/OPEN_QUESTIONS.md`：当前默认假设与后续待确认事项
 
 ## 默认假设
@@ -85,11 +87,14 @@
 
 说明：
 
+- `.env.example` 列出了应用运行真正依赖的最小环境变量集合。
 - 本地若已执行 `vercel env pull .env.development.local`，建议额外同步一份到 `.env.local` 供 `next build` 使用。
 - `.env.local` 和 `.env.development.local` 都不要提交进 Git。
+- 在完成环境隔离前，Preview 部署只能用于界面和流程验收，不应视为独立测试数据库。
 
 ## 开发约束
 
 - 不要把 `.env.development.local`、`.env.local` 或任何密钥提交进 Git。
 - 不要照搬 Supabase 官方 quickstart 里的 `notes` 或 `countries` 示例表到本项目。
 - 不要在尚未需要前启用 Supabase Preview Branch。
+- 在 `Preview` 与 `Production` 未完成数据库隔离前，不要在 Preview 上做真实审核、真实上架或其他高风险写操作。

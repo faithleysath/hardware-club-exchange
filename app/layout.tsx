@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { EnvironmentBanner } from "@/components/environment-banner";
 import { SiteHeader } from "@/components/site-header";
 import { getCurrentViewer } from "@/lib/auth";
 
@@ -39,6 +40,7 @@ export default async function RootLayout({
       <body className="min-h-full">
         <div className="min-h-screen">
           <SiteHeader viewer={viewer} />
+          <EnvironmentBanner />
           <main className="mx-auto w-full max-w-7xl px-6 py-8 sm:py-10">
             {children}
           </main>

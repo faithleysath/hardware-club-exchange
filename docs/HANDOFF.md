@@ -19,6 +19,7 @@
 ## 2. What Already Works
 
 - Supabase Auth GitHub OAuth 登录已经接入。
+- 管理员现在可以直接创建邮箱密码账号、重置成员密码，且不开放公开注册。
 - 首位登录用户会自动成为 `active admin`，后续用户默认进入 `pending` 状态。
 - 成员端已经具备：首页筛选、详情页、发布、编辑、我的发布、图片上传。
 - 管理端已经具备：审核台、成员管理、审计日志。
@@ -27,7 +28,8 @@
 
 认证接入注意事项：
 
-- 代码侧已经切换为 GitHub OAuth，不再默认依赖邮箱 Magic Link。
+- 代码侧支持 GitHub OAuth，以及管理员受管控创建的邮箱密码账号。
+- 邮箱密码账号不能自行注册，只能由管理员在成员管理页创建。
 - 在真正可登录前，仍需在 Supabase Dashboard 中启用 GitHub Provider，并录入 GitHub OAuth App 的 `Client ID` / `Client Secret`。
 - GitHub OAuth App 的 callback URL 应填写 Supabase 提供的 `https://<project-ref>.supabase.co/auth/v1/callback`。
 - Supabase URL Configuration 里的 Redirect URLs 需要加入应用自身的 `/auth/callback`，至少覆盖本地、Preview、Production 三个入口。

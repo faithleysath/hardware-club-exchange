@@ -7,7 +7,7 @@
 - 项目目录名使用 `hardware-club-exchange`。
 - 技术栈采用 `Next.js + Bun + Vercel + Supabase + Drizzle + Tailwind + shadcn/ui`。
 - 平台定位为社团内部工具，不对外开放。
-- 第一版采用邮箱登录 + 成员状态审核。
+- 第一版采用 GitHub OAuth + 管理员创建的邮箱密码登录，并保留成员状态审核。
 - 第一版采用先审核后公开的内容流转模式。
 
 ## Resolved Setup Decisions

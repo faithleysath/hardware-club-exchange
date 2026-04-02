@@ -1,6 +1,13 @@
-import { updateMemberRoleAction, updateMemberStatusAction } from "@/lib/actions/admin";
+import {
+  createManagedMemberAccountAction,
+  resetMemberPasswordAction,
+  updateMemberRoleAction,
+  updateMemberStatusAction,
+} from "@/lib/actions/admin";
 import { requireAdminViewer } from "@/lib/auth";
+import { AdminResetPasswordForm } from "@/components/admin-reset-password-form";
 import { getMemberDirectory } from "@/lib/data/admin";
+import { AdminCreateMemberForm } from "@/components/admin-create-member-form";
 import { MemberStatusBadge } from "@/components/status-badge";
 import { SubmitButton } from "@/components/submit-button";
 import { memberRoleLabels } from "@/lib/constants";
@@ -21,6 +28,21 @@ export default async function AdminMembersPage() {
         <h1 className="mt-3 text-4xl font-semibold tracking-tight text-zinc-950">
           决定谁能进入平台，以及谁能参与审核
         </h1>
+      </section>
+
+      <section className="rounded-[2.2rem] border border-black/5 bg-white p-8 shadow-[0_18px_60px_rgba(0,0,0,0.05)]">
+        <div className="mb-6 space-y-2">
+          <p className="text-sm font-medium text-zinc-500">管理员创建账号</p>
+          <h2 className="text-2xl font-semibold text-zinc-950">
+            为没有 GitHub 的成员预先创建邮箱密码账号
+          </h2>
+          <p className="max-w-3xl text-sm leading-7 text-zinc-500">
+            这类账号不能自行注册，只能由管理员在这里创建。创建后，对方可以直接用邮箱和密码登录；
+            是否允许立即进入平台，由你这里设定的初始状态决定。
+          </p>
+        </div>
+
+        <AdminCreateMemberForm action={createManagedMemberAccountAction} />
       </section>
 
       <div className="grid gap-6">
@@ -91,6 +113,14 @@ export default async function AdminMembersPage() {
                   </SubmitButton>
                 </form>
               </div>
+            </div>
+
+            <div className="mt-5 border-t border-zinc-100 pt-5">
+              <AdminResetPasswordForm
+                memberId={profile.id}
+                email={email}
+                action={resetMemberPasswordAction}
+              />
             </div>
           </article>
         ))}

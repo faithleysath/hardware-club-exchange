@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { listingFormSchema, profileFormSchema } from "@/lib/validators";
+import {
+  adminPasswordResetSchema,
+  listingFormSchema,
+  managedMemberAccountSchema,
+  passwordLoginSchema,
+  profileFormSchema,
+} from "@/lib/validators";
 
 describe("listingFormSchema", () => {
   it("parses a valid listing form and converts price to cents", () => {
@@ -47,5 +53,68 @@ describe("profileFormSchema", () => {
     expect(result.contactWechat).toBeUndefined();
     expect(result.department).toBeUndefined();
     expect(result.joinYear).toBeUndefined();
+  });
+});
+
+describe("passwordLoginSchema", () => {
+  it("normalizes email casing and whitespace", () => {
+    const result = passwordLoginSchema.parse({
+      email: "  Member@Example.com ",
+      password: "secret-pass",
+    });
+
+    expect(result.email).toBe("member@example.com");
+  });
+});
+
+describe("managedMemberAccountSchema", () => {
+  it("accepts pending and active as initial status", () => {
+    const pending = managedMemberAccountSchema.parse({
+      email: "pending@example.com",
+      password: "temporary-pass",
+      displayName: "",
+      initialStatus: "pending",
+    });
+
+    const active = managedMemberAccountSchema.parse({
+      email: "active@example.com",
+      password: "temporary-pass",
+      displayName: "  Active User ",
+      initialStatus: "active",
+    });
+
+    expect(pending.displayName).toBeUndefined();
+    expect(active.displayName).toBe("Active User");
+  });
+
+  it("rejects suspended as an initial status", () => {
+    const result = managedMemberAccountSchema.safeParse({
+      email: "member@example.com",
+      password: "temporary-pass",
+      displayName: "",
+      initialStatus: "suspended",
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("adminPasswordResetSchema", () => {
+  it("accepts a valid member id and strong-enough password", () => {
+    const result = adminPasswordResetSchema.parse({
+      memberId: "550e8400-e29b-41d4-a716-446655440000",
+      password: "temporary-pass",
+    });
+
+    expect(result.memberId).toBe("550e8400-e29b-41d4-a716-446655440000");
+  });
+
+  it("rejects too-short passwords", () => {
+    const result = adminPasswordResetSchema.safeParse({
+      memberId: "550e8400-e29b-41d4-a716-446655440000",
+      password: "short",
+    });
+
+    expect(result.success).toBe(false);
   });
 });

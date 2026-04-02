@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-当前目录已经包含最小可运行的 Next.js 应用和项目规划文档，可作为后续开发基线。
+当前目录已经包含可运行的 MVP 1.0 Web 应用、数据库迁移、测试基线和交接文档，可直接用于内部试运行。
 
 截至 `2026-04-02`，项目外部资源已经完成首轮打通：
 
@@ -14,7 +14,16 @@
 - Supabase 已通过 Vercel Integration 连接到项目
 - 本地开发环境已执行过 `vercel env pull .env.development.local`
 
-后续开发默认遵循以下规则：
+当前版本已完成的能力：
+
+- Supabase Auth 邮箱 Magic Link 登录与会话恢复
+- 成员资料建档、待审核状态页与管理员成员激活
+- 闲置发布、编辑、图片上传、列表浏览、详情页与卖家状态切换
+- 管理员审核台、成员管理页与审计日志页
+- Drizzle schema、SQL migration、核心 RLS 策略与私有图片 bucket
+- Vitest 单测、Playwright smoke test、本地 lint 与 production build 验证
+
+后续开发仍默认遵循以下规则：
 
 - 先更新文档，再改需求边界。
 - 先完成 MVP，再考虑扩展能力。
@@ -55,22 +64,29 @@
 - 第一版不做站内即时聊天，交易沟通通过预留联系方式完成。
 - 第一版启用内容审核，闲置信息默认进入审核后再公开。
 - 登录方式以邮箱 Magic Link 或 OTP 为主，成员资格通过管理员审批控制。
+- 若当前平台还没有任何激活管理员，则首个成功登录的账号自动成为 `active admin`，用于完成初始引导。
 
-## 近期开发顺序
+## 下一阶段建议
 
-1. 接入 Supabase Auth、基础登录页和受保护路由。
-2. 落 Drizzle schema、迁移和核心业务表。
-3. 把首页从 `Hello World` 改成平台首页骨架与导航。
-4. 完成闲置列表、详情、发布、图片上传和我的发布。
-5. 完成管理员审核台、举报处理和审计日志。
-6. 完成预约流程、收藏、搜索筛选与可用性优化。
+1. 进入 Phase 1.1，补预约申请流、我的预约页和卖家处理逻辑。
+2. 增加收藏与举报入口，把 `favorites`、`reports` 从表结构落到 UI。
+3. 增加图片删除/重排和更细的卖家编辑体验。
+4. 为登录、发布、审核三条主链路补更完整的端到端测试。
+5. 视使用反馈决定是否继续做通知占位、搜索排序增强与运营统计。
 
 ## 本地开发
 
 - 安装依赖：`bun install`
 - 启动开发环境：`bun run dev`
 - 运行检查：`bun run lint`
+- 运行单测：`bun run test`
+- 运行浏览器 smoke test：`bun run test:e2e`
 - 生产构建：`bun run build`
+
+说明：
+
+- 本地若已执行 `vercel env pull .env.development.local`，建议额外同步一份到 `.env.local` 供 `next build` 使用。
+- `.env.local` 和 `.env.development.local` 都不要提交进 Git。
 
 ## 开发约束
 

@@ -13,13 +13,16 @@
 - Vercel 已连接 GitHub 仓库
 - Supabase 已通过 Vercel Integration 连接到该项目
 - 本地已成功执行 `vercel env pull .env.development.local`
+- MVP 1.0 代码、数据库迁移和测试已经落地
 
 ## 2. What Already Works
 
-- 一个最小可运行的 `Next.js + Bun` 基线已经存在。
-- 首页当前为占位用的 `Hello World` 页面。
-- `bun install`、`bun run lint`、`bun run build` 均已验证通过。
-- Vercel 生产部署已经成功完成一次。
+- Supabase Auth 邮箱 Magic Link 登录已经接入。
+- 首位登录用户会自动成为 `active admin`，后续用户默认进入 `pending` 状态。
+- 成员端已经具备：首页筛选、详情页、发布、编辑、我的发布、图片上传。
+- 管理端已经具备：审核台、成员管理、审计日志。
+- Drizzle schema、SQL migration、RLS 策略和私有图片 bucket 已经创建并成功落库。
+- `bun run lint`、`bun run test`、`bun run build`、`bun run test:e2e` 均已本地验证通过。
 
 ## 3. Current Stack
 
@@ -43,52 +46,50 @@
 
 ## 5. Recommended Next Steps
 
-1. 读取现有环境变量并确认 Supabase 相关键名。
-2. 安装项目所需的 Supabase、Drizzle、Zod、表单和测试依赖。
-3. 接入 Supabase Auth，完成登录页、服务端 client 和受保护路由。
-4. 定义 Drizzle schema，并创建 `profiles`、`listings`、`listing_images`、`reservation_requests`、`favorites`、`reports`、`audit_logs` 等核心表。
-5. 用 SQL migration 或 Supabase SQL Editor 落 RLS 与基础策略。
-6. 把首页从占位页替换为平台首页骨架，并建立基础导航。
-7. 实现 MVP 主链路：登录 -> 浏览 -> 发布 -> 审核 -> 状态更新。
-8. 为核心链路补测试，并在每个阶段做本地验证与 Vercel 预览部署。
+1. 进入 Phase 1.1：落预约申请、卖家接受/拒绝、我的预约页。
+2. 把 `favorites`、`reports` 的 UI 补齐，形成完整的可用性增强闭环。
+3. 增加图片删除/排序和更细的卖家草稿体验。
+4. 补更强的端到端测试，包括登录后的发布与审核链路。
+5. 根据试运行反馈决定搜索排序、通知占位和运营统计优先级。
 
 ## 6. Suggested Build Order
 
 ### Step A
 
-基础设施：
+已完成：
 
 - Supabase client 封装
 - 环境变量读取与类型保护
-- 路由守卫
-- 通用页面 layout
+- 路由守卫与等待审核页
+- 通用 layout、导航和管理入口
 
 ### Step B
 
-数据层：
+已完成：
 
 - Drizzle schema
 - migration 流程
-- seed 方案
-- RLS 设计落地
+- 私有图片 bucket
+- 核心表 RLS 与 `updated_at` 触发器
 
 ### Step C
 
-功能层：
+已完成：
 
 - Auth
 - Profiles
 - Listings
 - Listing images
 - Moderation
+- Audit logs
 
 ### Step D
 
-测试与部署：
+已完成：
 
-- 单元测试覆盖 schema 辅助逻辑与权限判断
-- 端到端测试覆盖登录、发布、审核
-- Vercel 预览环境 smoke test
+- 单元测试覆盖校验与权限判断
+- 浏览器 smoke test 覆盖首页与登录页
+- 本地 build / lint / Vercel-ready 验证
 
 ## 7. Reading Order For New Contributors
 
@@ -106,10 +107,13 @@
 - 安装依赖：`bun install`
 - 启动开发：`bun run dev`
 - 静态检查：`bun run lint`
+- 单元测试：`bun run test`
+- 浏览器 smoke test：`bun run test:e2e`
 - 生产构建：`bun run build`
 
 ## 9. Notes On External Resources
 
 - GitHub、Vercel、Supabase 三者已经打通，后续开发不应再卡在基础接入上。
 - 如果本地缺少环境变量，优先尝试重新执行：`bunx vercel env pull .env.development.local`
+- 本地若需要跑 `bun run build`，记得同步一份 `.env.local`，否则 Next.js 不会读取 `.env.development.local`。
 - 如果 Vercel 需要重新部署，可继续沿用已有 GitHub 集成或 CLI 部署流程。
